@@ -75,12 +75,15 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      <Head>
-        <title>Kaia AI Agent - Intelligent Blockchain Assistant</title>
-        <meta name="description" content="AI-powered blockchain agent for Kaia network with advanced DeFi capabilities" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
+              <Head>
+          <title>Kaia AI Agent - Intelligent Blockchain Assistant</title>
+          <meta name="description" content="AI-powered blockchain agent for Kaia network with advanced DeFi capabilities" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <link rel="icon" href="/favicon.ico" />
+          <meta name="cache-control" content="no-cache, no-store, must-revalidate" />
+          <meta name="pragma" content="no-cache" />
+          <meta name="expires" content="0" />
+        </Head>
 
       <Toaster 
         position="top-right"
@@ -108,7 +111,7 @@ export default function Home() {
             <div className="text-3xl">🤖</div>
           </div>
           <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-6">
-            Kaia AI Agent
+            Kaia AI Agent v2.0
           </h1>
           <p className="text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
             Your intelligent blockchain assistant for the Kaia network. 

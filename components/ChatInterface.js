@@ -38,7 +38,9 @@ const ChatInterface = forwardRef(function ChatInterface({ walletAddress, isWalle
     e.preventDefault();
     const prompt = overridePrompt !== undefined ? overridePrompt : inputValue;
     if (!prompt.trim()) return;
-    if (!isWalletConnected) {
+    
+    // Allow testing without wallet connection in test mode
+    if (!isWalletConnected && !testMode) {
       toast.error('Please connect your wallet first');
       return;
     }
@@ -46,6 +48,7 @@ const ChatInterface = forwardRef(function ChatInterface({ walletAddress, isWalle
     console.log('Submitting prompt:', prompt);
     console.log('Wallet connected:', isWalletConnected);
     console.log('Wallet address:', walletAddress);
+    console.log('Test mode:', testMode);
     
     const userMessage = {
       id: Date.now(),

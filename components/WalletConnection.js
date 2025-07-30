@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 
 const WALLET_PROVIDERS = [
   { key: 'metamask', name: 'MetaMask', icon: '🦊', detect: () => typeof window !== 'undefined' && window.ethereum },
-  { key: 'kaia', name: 'Kaia Wallet', icon: '🪙', detect: () => typeof window !== 'undefined' && window.kaia },
+  { key: 'kaia', name: 'Kaia Wallet', icon: '🪙', detect: () => typeof window !== 'undefined' && (window.kaia || window.kaiaWallet) },
 ];
 
 export default function WalletConnection({ isConnected, walletAddress, balance, onConnect, onDisconnect }) {
@@ -72,16 +72,51 @@ export default function WalletConnection({ isConnected, walletAddress, balance, 
           toast.success('Wallet connected successfully!');
         }
       } else if (selectedProvider === 'kaia') {
-        if (!window.kaia) {
+        const kaiaProvider = window.kaia || window.kaiaWallet;
+        if (!kaiaProvider) {
           toast.error('Kaia Wallet extension is not installed.');
           setIsConnecting(false);
           return;
         }
         // Kaia Wallet logic
-        const accounts = await window.kaia.request({ method: 'eth_requestAccounts' });
+        const accounts = await kaiaProvider.request({ method: 'eth_requestAccounts' });
         if (accounts.length > 0) {
           const account = accounts[0];
-          // Optionally check network here if needed
+          // Check if we're on the correct network (Kaia testnet)
+          const chainId = await kaiaProvider.request({ method: 'eth_chainId' });
+          const kaiaTestnetChainId = '0x3e9';
+          
+          if (chainId !== kaiaTestnetChainId) {
+            try {
+              await kaiaProvider.request({
+                method: 'wallet_switchEthereumChain',
+                params: [{ chainId: kaiaTestnetChainId }],
+              });
+            } catch (switchError) {
+              if (switchError.code === 4902) {
+                try {
+                  await kaiaProvider.request({
+                    method: 'wallet_addEthereumChain',
+                    params: [{
+                      chainId: kaiaTestnetChainId,
+                      chainName: 'Kaia Testnet',
+                      nativeCurrency: { name: 'KAIA', symbol: 'KAIA', decimals: 18 },
+                      rpcUrls: ['https://public-en-kairos.node.kaia.io'],
+                      blockExplorerUrls: ['https://kaiascope.com'],
+                    }],
+                  });
+                } catch (addError) {
+                  toast.error('Failed to add Kaia testnet to Kaia Wallet. Please add it manually.');
+                  setIsConnecting(false);
+                  return;
+                }
+              } else {
+                toast.error('Failed to switch to Kaia testnet in Kaia Wallet. Please switch manually.');
+                setIsConnecting(false);
+                return;
+              }
+            }
+          }
           onConnect(account);
           toast.success('Kaia Wallet connected!');
         }
@@ -131,18 +166,20 @@ export default function WalletConnection({ isConnected, walletAddress, balance, 
         window.ethereum.on('accountsChanged', handleAccountsChanged);
         window.ethereum.on('chainChanged', handleChainChanged);
       }
-      if (window.kaia) {
-        window.kaia.on('accountsChanged', handleAccountsChanged);
-        window.kaia.on('chainChanged', handleChainChanged);
+      if (window.kaia || window.kaiaWallet) {
+        const kaiaProvider = window.kaia || window.kaiaWallet;
+        kaiaProvider.on('accountsChanged', handleAccountsChanged);
+        kaiaProvider.on('chainChanged', handleChainChanged);
       }
       return () => {
         if (window.ethereum) {
           window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
           window.ethereum.removeListener('chainChanged', handleChainChanged);
         }
-        if (window.kaia) {
-          window.kaia.removeListener('accountsChanged', handleAccountsChanged);
-          window.kaia.removeListener('chainChanged', handleChainChanged);
+        if (window.kaia || window.kaiaWallet) {
+          const kaiaProvider = window.kaia || window.kaiaWallet;
+          kaiaProvider.removeListener('accountsChanged', handleAccountsChanged);
+          kaiaProvider.removeListener('chainChanged', handleChainChanged);
         }
       };
     }

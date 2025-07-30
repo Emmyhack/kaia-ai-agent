@@ -90,8 +90,12 @@ export default function Home() {
 
   // Function to send a prompt to the chat bot programmatically
   const sendPrompt = (prompt) => {
+    console.log('Sending prompt:', prompt);
     if (chatRef.current && chatRef.current.sendPrompt) {
+      console.log('Calling chatRef.sendPrompt');
       chatRef.current.sendPrompt(prompt);
+    } else {
+      console.error('chatRef.current or sendPrompt not available');
     }
   };
 

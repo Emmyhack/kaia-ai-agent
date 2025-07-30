@@ -10,6 +10,7 @@ const ChatInterface = forwardRef(function ChatInterface({ walletAddress, isWalle
 
   useImperativeHandle(ref, () => ({
     sendPrompt: (prompt) => {
+      console.log('ChatInterface.sendPrompt called with:', prompt);
       setInputValue(prompt);
       handleSubmit({ preventDefault: () => {} }, prompt);
     },

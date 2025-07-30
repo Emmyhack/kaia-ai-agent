@@ -133,7 +133,7 @@ export default function Home() {
             <div className="text-3xl">🤖</div>
           </div>
           <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-6">
-            Kaia AI Agent v2.0
+            Kaia Assistant v1.0
           </h1>
           <p className="text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
             Your intelligent blockchain assistant for the Kaia network. 

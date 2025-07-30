@@ -6,6 +6,7 @@ const ChatInterface = forwardRef(function ChatInterface({ walletAddress, isWalle
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [testMode, setTestMode] = useState(false);
   const messagesEndRef = useRef(null);
 
   useImperativeHandle(ref, () => ({
@@ -15,6 +16,15 @@ const ChatInterface = forwardRef(function ChatInterface({ walletAddress, isWalle
       handleSubmit({ preventDefault: () => {} }, prompt);
     },
   }));
+
+  // Add test mode toggle
+  useEffect(() => {
+    // Enable test mode if URL has test parameter
+    if (typeof window !== 'undefined' && window.location.search.includes('test=true')) {
+      setTestMode(true);
+      console.log('Test mode enabled');
+    }
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -32,6 +42,11 @@ const ChatInterface = forwardRef(function ChatInterface({ walletAddress, isWalle
       toast.error('Please connect your wallet first');
       return;
     }
+    
+    console.log('Submitting prompt:', prompt);
+    console.log('Wallet connected:', isWalletConnected);
+    console.log('Wallet address:', walletAddress);
+    
     const userMessage = {
       id: Date.now(),
       type: 'user',
@@ -42,8 +57,13 @@ const ChatInterface = forwardRef(function ChatInterface({ walletAddress, isWalle
     setInputValue('');
     setIsLoading(true);
     if (onAiError) onAiError(null);
+    
     try {
-      const response = await fetch('/api/agent', {
+      console.log('Making API request to /api/agent...');
+      const apiEndpoint = testMode ? '/api/test-chat' : '/api/agent';
+      console.log('Using API endpoint:', apiEndpoint);
+      
+      const response = await fetch(apiEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -53,7 +73,11 @@ const ChatInterface = forwardRef(function ChatInterface({ walletAddress, isWalle
           userAddress: walletAddress,
         }),
       });
+      
+      console.log('API response status:', response.status);
       const data = await response.json();
+      console.log('API response data:', data);
+      
       if (data.success) {
         const aiMessage = {
           id: Date.now() + 1,
@@ -63,10 +87,14 @@ const ChatInterface = forwardRef(function ChatInterface({ walletAddress, isWalle
           timestamp: new Date().toISOString(),
         };
         setMessages(prev => [...prev, aiMessage]);
-        if (data.toolCalls?.some(call => call.toolName === 'checkBalance')) {
+        console.log('AI message added successfully');
+        
+        // Update balance if it's a balance-related query
+        if (prompt.toLowerCase().includes('balance') && onBalanceUpdate) {
           onBalanceUpdate(walletAddress);
         }
       } else {
+        console.error('API returned error:', data.error, data.details);
         const errorMessage = {
           id: Date.now() + 1,
           type: 'ai',
@@ -78,11 +106,11 @@ const ChatInterface = forwardRef(function ChatInterface({ walletAddress, isWalle
         if (onAiError) onAiError(data.details || data.error || 'Unknown error');
       }
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('Network error sending message:', error);
       const errorMessage = {
         id: Date.now() + 1,
         type: 'ai',
-        content: 'Sorry, I encountered an error processing your request. Please try again.',
+        content: 'Sorry, I encountered a network error. Please check your connection and try again.',
         isError: true,
         timestamp: new Date().toISOString(),
       };
@@ -159,7 +187,9 @@ const ChatInterface = forwardRef(function ChatInterface({ walletAddress, isWalle
             <BotIcon className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-white">AI Assistant</h3>
+            <h3 className="text-lg font-semibold text-white">
+              AI Assistant {testMode && <span className="text-yellow-400 text-sm">(TEST MODE)</span>}
+            </h3>
             <p className="text-sm text-gray-300">
               {isWalletConnected ? 'Connected to Kaia Network' : 'Connect wallet to start'}
             </p>

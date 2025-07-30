@@ -801,6 +801,14 @@ const KAIA_AI_AGENT_ABI = [
   }
 ];
 
+// Demo token address mapping (use .env or hardcoded for demo)
+const TOKEN_ADDRESSES = {
+  KAIA: ethers.ZeroAddress,
+  MOCK: process.env.MOCK_ERC20_ADDRESS || '0x8C82fa4dc47a9bf5034Bb38815c843B75EF76690',
+};
+
+const YIELD_FARM_ADDRESS = process.env.MOCK_YIELD_FARM_ADDRESS || '0x27A0239D6F238c6AD5b5952d70e62081D1cc896e';
+
 class KaiaAgentService {
   constructor() {
     this.provider = null;
@@ -846,10 +854,14 @@ class KaiaAgentService {
       throw new Error('Contract not initialized');
     }
 
+    // Force use of mock addresses for demo
+    const tokenInAddr = TOKEN_ADDRESSES[tokenIn] || tokenIn;
+    const tokenOutAddr = TOKEN_ADDRESSES[tokenOut] || tokenOut;
+
     try {
       const tx = await this.contract.swapTokens(
-        tokenIn,
-        tokenOut,
+        tokenInAddr,
+        tokenOutAddr,
         ethers.parseEther(amountIn.toString()),
         ethers.parseEther(minAmountOut.toString()),
         recipient
@@ -906,9 +918,12 @@ class KaiaAgentService {
       throw new Error('Provider not initialized');
     }
 
+    // Force use of mock address for demo
+    const tokenAddr = tokenAddress ? (TOKEN_ADDRESSES[tokenAddress] || tokenAddress) : ethers.ZeroAddress;
+
     try {
       // If no token address provided, check native KAIA balance
-      if (!tokenAddress || tokenAddress === ethers.ZeroAddress) {
+      if (!tokenAddr || tokenAddr === ethers.ZeroAddress) {
         const balance = await this.provider.getBalance(userAddress);
         return {
           success: true,
@@ -924,7 +939,7 @@ class KaiaAgentService {
       return {
         success: true,
         balance: mockBalance.toFixed(4),
-        tokenAddress: tokenAddress,
+        tokenAddress: tokenAddr,
         tokenName: 'Mock Token',
       };
     } catch (error) {
@@ -1000,12 +1015,11 @@ class KaiaAgentService {
       throw new Error('Contract not initialized');
     }
 
+    // Force use of mock yield farm address for demo
+    const farmAddr = YIELD_FARM_ADDRESS;
+
     try {
-      const tx = await this.contract.depositToYieldFarm(
-        farmAddress,
-        ethers.parseEther(amount.toString()),
-        userAddress
-      );
+      const tx = await this.contract.depositToYieldFarm(farmAddr, ethers.parseEther(amount.toString()), userAddress);
       
       const receipt = await tx.wait();
       return {

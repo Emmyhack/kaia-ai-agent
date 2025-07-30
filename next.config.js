@@ -6,6 +6,8 @@ const nextConfig = {
     KAIA_RPC_URL: process.env.KAIA_RPC_URL,
     KAIASCAN_API_KEY: process.env.KAIASCAN_API_KEY,
     CONTRACT_ADDRESS: process.env.CONTRACT_ADDRESS,
+    NEXT_PUBLIC_MOCK_ERC20_ADDRESS: process.env.MOCK_ERC20_ADDRESS,
+    NEXT_PUBLIC_MOCK_YIELD_FARM_ADDRESS: process.env.MOCK_YIELD_FARM_ADDRESS,
   },
   webpack: (config, { isServer }) => {
     // Optimize for production builds

@@ -8,6 +8,10 @@ const ChatInterface = dynamic(() => import('../components/ChatInterface'), { ssr
 const WalletConnection = dynamic(() => import('../components/WalletConnection'), { ssr: false });
 const AgentStats = dynamic(() => import('../components/AgentStats'), { ssr: false });
 
+// Add these at the top for demo addresses
+const MOCK_ERC20_ADDRESS = process.env.NEXT_PUBLIC_MOCK_ERC20_ADDRESS || '0x8C82fa4dc47a9bf5034Bb38815c843B75EF76690';
+const MOCK_YIELD_FARM_ADDRESS = process.env.NEXT_PUBLIC_MOCK_YIELD_FARM_ADDRESS || '0x27A0239D6F238c6AD5b5952d70e62081D1cc896e';
+
 export default function Home() {
   const [walletAddress, setWalletAddress] = useState('');
   const [isConnected, setIsConnected] = useState(false);
@@ -152,6 +156,18 @@ export default function Home() {
           />
         </div>
 
+        {/* Demo Instructions */}
+        <div className="mb-8 max-w-2xl mx-auto bg-yellow-100/10 border border-yellow-300/20 rounded-xl p-6 text-yellow-200 text-center">
+          <h2 className="text-xl font-bold mb-2 text-yellow-300">Demo Instructions</h2>
+          <ul className="text-yellow-100 text-sm list-disc list-inside space-y-1">
+            <li>This demo uses <b>mock contracts</b> on the Kaia testnet.</li>
+            <li>All swaps, balances, and yield farm actions use <b>test tokens</b> and <b>mock addresses</b>.</li>
+            <li>Use the Quick Actions or type prompts like <code>Swap 10 KAIA for MOCK token at {MOCK_ERC20_ADDRESS}</code>.</li>
+            <li>The backend wallet performs all actions (not your personal wallet).</li>
+            <li>For real DeFi, you would need a real DEX, liquidity, and user wallet signing.</li>
+          </ul>
+        </div>
+
         {/* Main Content */}
         {isLoading ? (
           <div className="flex justify-center items-center h-64">
@@ -194,19 +210,19 @@ export default function Home() {
                 <div className="space-y-3">
                   <button
                     className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105"
-                    onClick={() => sendPrompt('Check my KAIA balance')}
+                    onClick={() => sendPrompt(`Check my KAIA and MOCK token balance at ${MOCK_ERC20_ADDRESS}`)}
                   >
                     Check Balance
                   </button>
                   <button
                     className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105"
-                    onClick={() => sendPrompt('Swap 10 KAIA for USDC')}
+                    onClick={() => sendPrompt(`Swap 10 KAIA for MOCK token at ${MOCK_ERC20_ADDRESS}`)}
                   >
                     Swap Tokens
                   </button>
                   <button
                     className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105"
-                    onClick={() => sendPrompt('Show my yield farms')}
+                    onClick={() => sendPrompt(`Deposit 5 KAIA to yield farm at ${MOCK_YIELD_FARM_ADDRESS}`)}
                   >
                     Yield Farming
                   </button>

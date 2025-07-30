@@ -18,6 +18,7 @@ export default function Home() {
   const [balance, setBalance] = useState('0');
   const [isLoading, setIsLoading] = useState(true);
   const [componentsLoaded, setComponentsLoaded] = useState(false);
+  const [selectedNetwork, setSelectedNetwork] = useState('testnet');
   const chatRef = useRef();
   const [aiError, setAiError] = useState(null);
 
@@ -88,12 +89,13 @@ export default function Home() {
   // Function to send a prompt to the chat bot programmatically
   const sendPrompt = (prompt) => {
     console.log('sendPrompt called with:', prompt);
+    console.log('Selected network:', selectedNetwork);
     console.log('chatRef.current:', chatRef.current);
     
     if (chatRef.current && chatRef.current.sendPrompt) {
       console.log('Calling chatRef.sendPrompt');
       try {
-        chatRef.current.sendPrompt(prompt);
+        chatRef.current.sendPrompt(prompt, selectedNetwork);
         console.log('sendPrompt executed successfully');
       } catch (error) {
         console.error('Error in sendPrompt:', error);
@@ -168,15 +170,47 @@ export default function Home() {
           />
         </div>
 
+        {/* Network Selector */}
+        <div className="mb-8 max-w-md mx-auto">
+          <div className="bg-white/5 backdrop-blur-lg rounded-xl p-4 border border-white/10">
+            <h3 className="text-lg font-semibold text-white mb-3">Select Network</h3>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setSelectedNetwork('testnet')}
+                className={`flex-1 px-4 py-2 rounded-lg transition-all duration-200 ${
+                  selectedNetwork === 'testnet'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-white/10 text-gray-300 hover:bg-white/20'
+                }`}
+              >
+                🧪 Testnet
+              </button>
+              <button
+                onClick={() => setSelectedNetwork('mainnet')}
+                className={`flex-1 px-4 py-2 rounded-lg transition-all duration-200 ${
+                  selectedNetwork === 'mainnet'
+                    ? 'bg-green-500 text-white'
+                    : 'bg-white/10 text-gray-300 hover:bg-white/20'
+                }`}
+              >
+                🚀 Mainnet
+              </button>
+            </div>
+            <p className="text-sm text-gray-400 mt-2 text-center">
+              Currently selected: <span className="text-blue-400 font-semibold">{selectedNetwork === 'testnet' ? 'Kaia Testnet' : 'Kaia Mainnet'}</span>
+            </p>
+          </div>
+        </div>
+
         {/* Demo Instructions */}
         <div className="mb-8 max-w-2xl mx-auto bg-yellow-100/10 border border-yellow-300/20 rounded-xl p-6 text-yellow-200 text-center">
           <h2 className="text-xl font-bold mb-2 text-yellow-300">Demo Instructions</h2>
           <ul className="text-yellow-100 text-sm list-disc list-inside space-y-1">
-            <li>This demo uses <b>mock contracts</b> on the Kaia testnet.</li>
-            <li>All swaps, balances, and yield farm actions use <b>test tokens</b> and <b>mock addresses</b>.</li>
-            <li>Use the Quick Actions or type prompts like <code>Swap 10 KAIA for MOCK token at {MOCK_ERC20_ADDRESS}</code>.</li>
-            <li>The backend wallet performs all actions (not your personal wallet).</li>
-            <li>For real DeFi, you would need a real DEX, liquidity, and user wallet signing.</li>
+            <li>This demo uses <b>real blockchain queries</b> for balances and network status.</li>
+            <li>Select between <b>Testnet</b> and <b>Mainnet</b> to query different networks.</li>
+            <li>Use the Quick Actions or type prompts like <code>Check my KAIA balance on testnet</code>.</li>
+            <li>Real blockchain data is displayed with network information and data source.</li>
+            <li>Complex operations (swaps, farming) use mock responses for demo purposes.</li>
           </ul>
         </div>
 
@@ -198,6 +232,7 @@ export default function Home() {
                 isWalletConnected={isConnected}
                 onBalanceUpdate={updateBalance}
                 onAiError={setAiError}
+                selectedNetwork={selectedNetwork}
               />
               {aiError && (
                 <div className="mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-300">
@@ -222,21 +257,21 @@ export default function Home() {
                 <div className="space-y-3">
                   <button
                     className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105"
-                    onClick={() => sendPrompt(`Check my KAIA and MOCK token balance at ${MOCK_ERC20_ADDRESS}`)}
+                    onClick={() => sendPrompt(`Check my KAIA balance on ${selectedNetwork}`)}
                   >
                     Check Balance
                   </button>
                   <button
                     className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105"
-                    onClick={() => sendPrompt(`Swap 10 KAIA for MOCK token at ${MOCK_ERC20_ADDRESS}`)}
+                    onClick={() => sendPrompt(`Swap 10 KAIA for MOCK token on ${selectedNetwork}`)}
                   >
                     Swap Tokens
                   </button>
                   <button
                     className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105"
-                    onClick={() => sendPrompt(`Deposit 5 KAIA to yield farm at ${MOCK_YIELD_FARM_ADDRESS}`)}
+                    onClick={() => sendPrompt(`Check network status on ${selectedNetwork}`)}
                   >
-                    Yield Farming
+                    Network Status
                   </button>
                 </div>
               </div>

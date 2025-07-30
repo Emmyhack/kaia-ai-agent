@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 're
 import { SendIcon, BotIcon, UserIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const ChatInterface = forwardRef(function ChatInterface({ walletAddress, isWalletConnected, onBalanceUpdate, onAiError }, ref) {
+const ChatInterface = forwardRef(function ChatInterface({ walletAddress, isWalletConnected, onBalanceUpdate, onAiError, selectedNetwork = 'testnet' }, ref) {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -10,10 +10,10 @@ const ChatInterface = forwardRef(function ChatInterface({ walletAddress, isWalle
   const messagesEndRef = useRef(null);
 
   useImperativeHandle(ref, () => ({
-    sendPrompt: (prompt) => {
-      console.log('ChatInterface.sendPrompt called with:', prompt);
+    sendPrompt: (prompt, network = 'testnet') => {
+      console.log('ChatInterface.sendPrompt called with:', prompt, 'network:', network);
       setInputValue(prompt);
-      handleSubmit({ preventDefault: () => {} }, prompt);
+      handleSubmit({ preventDefault: () => {} }, prompt, network);
     },
   }));
 
@@ -34,7 +34,7 @@ const ChatInterface = forwardRef(function ChatInterface({ walletAddress, isWalle
     scrollToBottom();
   }, [messages]);
 
-  const handleSubmit = async (e, overridePrompt) => {
+  const handleSubmit = async (e, overridePrompt, network) => {
     e.preventDefault();
     const prompt = overridePrompt !== undefined ? overridePrompt : inputValue;
     if (!prompt.trim()) return;
@@ -74,6 +74,7 @@ const ChatInterface = forwardRef(function ChatInterface({ walletAddress, isWalle
         body: JSON.stringify({
           prompt,
           userAddress: walletAddress,
+          network: network, // Pass the network parameter
         }),
       });
       

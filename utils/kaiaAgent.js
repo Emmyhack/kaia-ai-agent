@@ -809,11 +809,31 @@ const TOKEN_ADDRESSES = {
 
 const YIELD_FARM_ADDRESS = process.env.MOCK_YIELD_FARM_ADDRESS || '0x27A0239D6F238c6AD5b5952d70e62081D1cc896e';
 
+// Network configurations
+const NETWORKS = {
+  testnet: {
+    name: 'Kaia Testnet',
+    rpcUrl: 'https://public-en-kairos.node.kaia.io',
+    chainId: 1001,
+    explorer: 'https://kaiascope.com',
+    contractAddress: process.env.CONTRACT_ADDRESS || '0x554Ef03BA2A7CC0A539731CA6beF561fA2648c4E',
+  },
+  mainnet: {
+    name: 'Kaia Mainnet',
+    rpcUrl: 'https://public-en.node.kaia.io',
+    chainId: 8217,
+    explorer: 'https://kaiascope.com',
+    contractAddress: process.env.MAINNET_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000', // Not deployed yet
+  }
+};
+
 class KaiaAgentService {
   constructor() {
-    this.provider = null;
+    this.testnetProvider = null;
+    this.mainnetProvider = null;
+    this.testnetContract = null;
+    this.mainnetContract = null;
     this.signer = null;
-    this.contract = null;
     this.initialized = false;
   }
 
@@ -821,25 +841,36 @@ class KaiaAgentService {
     if (this.initialized) return;
 
     try {
-      // Initialize Kaia provider
-      const rpcUrl = process.env.KAIA_RPC_URL || 'https://public-en-kairos.node.kaia.io';
-      this.provider = new ethers.JsonRpcProvider(rpcUrl);
+      // Initialize testnet provider
+      this.testnetProvider = new ethers.JsonRpcProvider(NETWORKS.testnet.rpcUrl);
+      
+      // Initialize mainnet provider
+      this.mainnetProvider = new ethers.JsonRpcProvider(NETWORKS.mainnet.rpcUrl);
       
       // Initialize signer if private key is available
       if (process.env.KAIA_PRIVATE_KEY) {
-        this.signer = new ethers.Wallet(process.env.KAIA_PRIVATE_KEY, this.provider);
+        this.signer = new ethers.Wallet(process.env.KAIA_PRIVATE_KEY, this.testnetProvider);
       }
       
-      // Initialize contract
-      if (process.env.CONTRACT_ADDRESS && this.signer) {
-        this.contract = new ethers.Contract(
-          process.env.CONTRACT_ADDRESS,
+      // Initialize contracts
+      if (NETWORKS.testnet.contractAddress && NETWORKS.testnet.contractAddress !== '0x0000000000000000000000000000000000000000') {
+        this.testnetContract = new ethers.Contract(
+          NETWORKS.testnet.contractAddress,
           KAIA_AI_AGENT_ABI,
-          this.signer
+          this.signer || this.testnetProvider
+        );
+      }
+      
+      if (NETWORKS.mainnet.contractAddress && NETWORKS.mainnet.contractAddress !== '0x0000000000000000000000000000000000000000') {
+        this.mainnetContract = new ethers.Contract(
+          NETWORKS.mainnet.contractAddress,
+          KAIA_AI_AGENT_ABI,
+          this.mainnetProvider
         );
       }
       
       this.initialized = true;
+      console.log('KaiaAgentService initialized with real blockchain connections');
     } catch (error) {
       console.error('Failed to initialize KaiaAgentService:', error);
       throw error;
@@ -850,8 +881,8 @@ class KaiaAgentService {
   async swapTokens(tokenIn, tokenOut, amountIn, minAmountOut, recipient) {
     await this.initialize();
     
-    if (!this.contract) {
-      throw new Error('Contract not initialized');
+    if (!this.testnetContract && !this.mainnetContract) {
+      throw new Error('Contract not initialized for any network');
     }
 
     // Force use of mock addresses for demo
@@ -859,7 +890,8 @@ class KaiaAgentService {
     const tokenOutAddr = TOKEN_ADDRESSES[tokenOut] || tokenOut;
 
     try {
-      const tx = await this.contract.swapTokens(
+      const contract = this.testnetContract || this.mainnetContract;
+      const tx = await contract.swapTokens(
         tokenInAddr,
         tokenOutAddr,
         ethers.parseEther(amountIn.toString()),
@@ -885,12 +917,13 @@ class KaiaAgentService {
   async getSwapQuote(tokenIn, tokenOut, amountIn) {
     await this.initialize();
     
-    if (!this.contract) {
-      throw new Error('Contract not initialized');
+    if (!this.testnetContract && !this.mainnetContract) {
+      throw new Error('Contract not initialized for any network');
     }
 
     try {
-      const [amountOut, feeAmount] = await this.contract.getSwapQuote(
+      const contract = this.testnetContract || this.mainnetContract;
+      const [amountOut, feeAmount] = await contract.getSwapQuote(
         tokenIn,
         tokenOut,
         ethers.parseEther(amountIn.toString())
@@ -910,43 +943,85 @@ class KaiaAgentService {
     }
   }
 
-  // Balance checking functionality
-  async checkBalance(userAddress, tokenAddress = null) {
+  // Real balance checking functionality
+  async checkBalance(userAddress, tokenAddress = null, network = 'testnet') {
     await this.initialize();
     
-    if (!this.provider) {
+    const provider = network === 'mainnet' ? this.mainnetProvider : this.testnetProvider;
+    
+    if (!provider) {
       throw new Error('Provider not initialized');
     }
 
-    // Force use of mock address for demo
-    const tokenAddr = tokenAddress ? (TOKEN_ADDRESSES[tokenAddress] || tokenAddress) : ethers.ZeroAddress;
-
     try {
       // If no token address provided, check native KAIA balance
-      if (!tokenAddr || tokenAddr === ethers.ZeroAddress) {
-        const balance = await this.provider.getBalance(userAddress);
+      if (!tokenAddress || tokenAddress === ethers.ZeroAddress) {
+        const balance = await provider.getBalance(userAddress);
         return {
           success: true,
           balance: ethers.formatEther(balance),
           tokenAddress: ethers.ZeroAddress,
           tokenName: 'KAIA',
+          network: network,
+          isReal: true,
         };
       }
       
-      // For ERC20 tokens, we'll use a mock response for now
-      // In production, you would use the actual ERC20 contract
-      const mockBalance = Math.random() * 1000; // Mock balance
-      return {
-        success: true,
-        balance: mockBalance.toFixed(4),
-        tokenAddress: tokenAddr,
-        tokenName: 'Mock Token',
-      };
+      // For ERC20 tokens, check if it's our mock token
+      if (tokenAddress === TOKEN_ADDRESSES.MOCK) {
+        // Mock response for demo token
+        const mockBalance = Math.random() * 1000;
+        return {
+          success: true,
+          balance: mockBalance.toFixed(4),
+          tokenAddress: tokenAddress,
+          tokenName: 'Mock Token',
+          network: network,
+          isReal: false,
+        };
+      }
+      
+      // For other ERC20 tokens, try to query the actual contract
+      try {
+        const tokenContract = new ethers.Contract(
+          tokenAddress,
+          ['function balanceOf(address) view returns (uint256)', 'function name() view returns (string)', 'function symbol() view returns (string)'],
+          provider
+        );
+        
+        const [balance, name, symbol] = await Promise.all([
+          tokenContract.balanceOf(userAddress),
+          tokenContract.name().catch(() => 'Unknown'),
+          tokenContract.symbol().catch(() => 'UNKNOWN')
+        ]);
+        
+        return {
+          success: true,
+          balance: ethers.formatEther(balance),
+          tokenAddress: tokenAddress,
+          tokenName: `${name} (${symbol})`,
+          network: network,
+          isReal: true,
+        };
+      } catch (tokenError) {
+        console.log('Token contract query failed, using mock response:', tokenError.message);
+        // Fallback to mock response
+        const mockBalance = Math.random() * 1000;
+        return {
+          success: true,
+          balance: mockBalance.toFixed(4),
+          tokenAddress: tokenAddress,
+          tokenName: 'Unknown Token',
+          network: network,
+          isReal: false,
+        };
+      }
     } catch (error) {
       console.error('Check balance failed:', error);
       return {
         success: false,
         error: error.message,
+        network: network,
       };
     }
   }
@@ -954,12 +1029,13 @@ class KaiaAgentService {
   async checkMultipleBalances(userAddress, tokenAddresses) {
     await this.initialize();
     
-    if (!this.contract) {
-      throw new Error('Contract not initialized');
+    if (!this.testnetContract && !this.mainnetContract) {
+      throw new Error('Contract not initialized for any network');
     }
 
     try {
-      const balances = await this.contract.checkMultipleBalances(
+      const contract = this.testnetContract || this.mainnetContract;
+      const balances = await contract.checkMultipleBalances(
         userAddress,
         tokenAddresses
       );
@@ -981,12 +1057,13 @@ class KaiaAgentService {
   async sendTokens(tokenAddress, recipientAddress, amount) {
     await this.initialize();
     
-    if (!this.contract) {
-      throw new Error('Contract not initialized');
+    if (!this.testnetContract && !this.mainnetContract) {
+      throw new Error('Contract not initialized for any network');
     }
 
     try {
-      const tx = await this.contract.sendTokens(
+      const contract = this.testnetContract || this.mainnetContract;
+      const tx = await contract.sendTokens(
         tokenAddress || ethers.ZeroAddress,
         recipientAddress,
         ethers.parseEther(amount.toString())
@@ -1011,15 +1088,16 @@ class KaiaAgentService {
   async depositToYieldFarm(farmAddress, amount, userAddress) {
     await this.initialize();
     
-    if (!this.contract) {
-      throw new Error('Contract not initialized');
+    if (!this.testnetContract && !this.mainnetContract) {
+      throw new Error('Contract not initialized for any network');
     }
 
     // Force use of mock yield farm address for demo
     const farmAddr = YIELD_FARM_ADDRESS;
 
     try {
-      const tx = await this.contract.depositToYieldFarm(farmAddr, ethers.parseEther(amount.toString()), userAddress);
+      const contract = this.testnetContract || this.mainnetContract;
+      const tx = await contract.depositToYieldFarm(farmAddr, ethers.parseEther(amount.toString()), userAddress);
       
       const receipt = await tx.wait();
       return {
@@ -1039,12 +1117,13 @@ class KaiaAgentService {
   async withdrawFromYieldFarm(farmAddress, amount, userAddress) {
     await this.initialize();
     
-    if (!this.contract) {
-      throw new Error('Contract not initialized');
+    if (!this.testnetContract && !this.mainnetContract) {
+      throw new Error('Contract not initialized for any network');
     }
 
     try {
-      const tx = await this.contract.withdrawFromYieldFarm(
+      const contract = this.testnetContract || this.mainnetContract;
+      const tx = await contract.withdrawFromYieldFarm(
         farmAddress,
         ethers.parseEther(amount.toString()),
         userAddress
@@ -1068,12 +1147,13 @@ class KaiaAgentService {
   async getYieldFarmInfo(farmAddress, userAddress) {
     await this.initialize();
     
-    if (!this.contract) {
-      throw new Error('Contract not initialized');
+    if (!this.testnetContract && !this.mainnetContract) {
+      throw new Error('Contract not initialized for any network');
     }
 
     try {
-      const [stakedBalance, earnedRewards, totalStaked] = await this.contract.getYieldFarmInfo(
+      const contract = this.testnetContract || this.mainnetContract;
+      const [stakedBalance, earnedRewards, totalStaked] = await contract.getYieldFarmInfo(
         farmAddress,
         userAddress
       );
@@ -1096,12 +1176,13 @@ class KaiaAgentService {
   async getUserYieldFarms(userAddress) {
     await this.initialize();
     
-    if (!this.contract) {
-      throw new Error('Contract not initialized');
+    if (!this.testnetContract && !this.mainnetContract) {
+      throw new Error('Contract not initialized for any network');
     }
 
     try {
-      const farms = await this.contract.getUserYieldFarms(userAddress);
+      const contract = this.testnetContract || this.mainnetContract;
+      const farms = await contract.getUserYieldFarms(userAddress);
       return {
         success: true,
         farms: farms,
@@ -1118,12 +1199,13 @@ class KaiaAgentService {
   async getTotalYieldValue(userAddress) {
     await this.initialize();
     
-    if (!this.contract) {
-      throw new Error('Contract not initialized');
+    if (!this.testnetContract && !this.mainnetContract) {
+      throw new Error('Contract not initialized for any network');
     }
 
     try {
-      const totalValue = await this.contract.getTotalYieldValue(userAddress);
+      const contract = this.testnetContract || this.mainnetContract;
+      const totalValue = await contract.getTotalYieldValue(userAddress);
       return {
         success: true,
         totalValue: ethers.formatEther(totalValue),
@@ -1137,25 +1219,139 @@ class KaiaAgentService {
     }
   }
 
+  // Real network status checking
+  async getNetworkStatus(network = 'testnet') {
+    await this.initialize();
+    
+    const provider = network === 'mainnet' ? this.mainnetProvider : this.testnetProvider;
+    
+    if (!provider) {
+      throw new Error('Provider not initialized');
+    }
+
+    try {
+      const [blockNumber, gasPrice] = await Promise.all([
+        provider.getBlockNumber(),
+        provider.getFeeData()
+      ]);
+      
+      return {
+        success: true,
+        network: NETWORKS[network].name,
+        blockNumber: blockNumber,
+        gasPrice: ethers.formatUnits(gasPrice.gasPrice, 'gwei'),
+        isConnected: true,
+      };
+    } catch (error) {
+      console.error('Get network status failed:', error);
+      return {
+        success: false,
+        error: error.message,
+        network: NETWORKS[network].name,
+        isConnected: false,
+      };
+    }
+  }
+
+  // Real transaction checking
+  async getTransaction(txHash, network = 'testnet') {
+    await this.initialize();
+    
+    const provider = network === 'mainnet' ? this.mainnetProvider : this.testnetProvider;
+    
+    if (!provider) {
+      throw new Error('Provider not initialized');
+    }
+
+    try {
+      const tx = await provider.getTransaction(txHash);
+      const receipt = await provider.getTransactionReceipt(txHash);
+      
+      if (!tx) {
+        return {
+          success: false,
+          error: 'Transaction not found',
+          network: network,
+        };
+      }
+      
+      return {
+        success: true,
+        transaction: {
+          hash: tx.hash,
+          from: tx.from,
+          to: tx.to,
+          value: ethers.formatEther(tx.value),
+          gasUsed: receipt?.gasUsed?.toString() || '0',
+          status: receipt?.status === 1 ? 'success' : 'failed',
+          blockNumber: tx.blockNumber,
+        },
+        network: network,
+        isReal: true,
+      };
+    } catch (error) {
+      console.error('Get transaction failed:', error);
+      return {
+        success: false,
+        error: error.message,
+        network: network,
+      };
+    }
+  }
+
+  // Real contract state checking
+  async getContractState(contractAddress, network = 'testnet') {
+    await this.initialize();
+    
+    const provider = network === 'mainnet' ? this.mainnetProvider : this.testnetProvider;
+    
+    if (!provider) {
+      throw new Error('Provider not initialized');
+    }
+
+    try {
+      // Basic contract info
+      const code = await provider.getCode(contractAddress);
+      
+      if (code === '0x') {
+        return {
+          success: false,
+          error: 'Contract not found at address',
+          network: network,
+        };
+      }
+      
+      return {
+        success: true,
+        contractAddress: contractAddress,
+        hasCode: true,
+        network: network,
+        isReal: true,
+      };
+    } catch (error) {
+      console.error('Get contract state failed:', error);
+      return {
+        success: false,
+        error: error.message,
+        network: network,
+      };
+    }
+  }
+
   // Utility functions
   async getGasPrice() {
     await this.initialize();
-    return await this.provider.getFeeData();
+    return await this.testnetProvider.getFeeData(); // Default to testnet for now
   }
 
   async getBlockNumber() {
     await this.initialize();
-    return await this.provider.getBlockNumber();
-  }
-
-  async getTransaction(txHash) {
-    await this.initialize();
-    return await this.provider.getTransaction(txHash);
+    return await this.testnetProvider.getBlockNumber(); // Default to testnet for now
   }
 
   async getTransactionReceipt(txHash) {
     await this.initialize();
-    return await this.provider.getTransactionReceipt(txHash);
+    return await this.testnetProvider.getTransactionReceipt(txHash); // Default to testnet for now
   }
 }
 

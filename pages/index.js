@@ -30,10 +30,21 @@ export default function Home() {
     const timer = setTimeout(() => {
       setComponentsLoaded(true);
       setIsLoading(false);
+      console.log('Components loaded, chatRef should be available');
     }, 1000);
     
     return () => clearTimeout(timer);
   }, []);
+
+  // Add a test effect to check if chatRef is available
+  useEffect(() => {
+    if (componentsLoaded && chatRef.current) {
+      console.log('ChatInterface component loaded successfully');
+      console.log('Available methods:', Object.keys(chatRef.current));
+    } else if (componentsLoaded) {
+      console.log('Components loaded but chatRef not available');
+    }
+  }, [componentsLoaded]);
 
   const checkWalletConnection = async () => {
     if (typeof window !== 'undefined' && window.ethereum) {
@@ -91,6 +102,17 @@ export default function Home() {
     console.log('sendPrompt called with:', prompt);
     console.log('Selected network:', selectedNetwork);
     console.log('chatRef.current:', chatRef.current);
+    console.log('isConnected:', isConnected);
+    console.log('walletAddress:', walletAddress);
+    
+    if (!isConnected) {
+      console.log('Wallet not connected, showing toast');
+      // Show a toast notification if wallet is not connected
+      if (typeof window !== 'undefined' && window.toast) {
+        window.toast.error('Please connect your wallet first');
+      }
+      return;
+    }
     
     if (chatRef.current && chatRef.current.sendPrompt) {
       console.log('Calling chatRef.sendPrompt');
@@ -105,6 +127,35 @@ export default function Home() {
       console.log('chatRef.current:', chatRef.current);
       if (chatRef.current) {
         console.log('Available methods on chatRef.current:', Object.keys(chatRef.current));
+      }
+      
+      // Fallback: Direct API call
+      console.log('Attempting fallback direct API call');
+      try {
+        fetch('/api/agent', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            prompt: prompt,
+            userAddress: walletAddress,
+            network: selectedNetwork,
+          }),
+        })
+        .then(response => response.json())
+        .then(data => {
+          console.log('Fallback API response:', data);
+          // You could show this in a toast or modal
+          if (typeof window !== 'undefined' && window.toast) {
+            window.toast.success('Query sent via fallback method');
+          }
+        })
+        .catch(error => {
+          console.error('Fallback API call failed:', error);
+        });
+      } catch (error) {
+        console.error('Fallback mechanism failed:', error);
       }
     }
   };
@@ -272,6 +323,32 @@ export default function Home() {
                     onClick={() => sendPrompt(`Check network status on ${selectedNetwork}`)}
                   >
                     Network Status
+                  </button>
+                  <button
+                    className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105"
+                    onClick={() => {
+                      console.log('Test button clicked');
+                      fetch('/api/agent', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          prompt: 'Test query',
+                          userAddress: walletAddress || '0x8Ff09c0a34184c35F86F5229d91280DfB523B59A',
+                          network: selectedNetwork,
+                        }),
+                      })
+                      .then(response => response.json())
+                      .then(data => {
+                        console.log('Test API response:', data);
+                        alert('API Test: ' + (data.success ? 'SUCCESS' : 'FAILED'));
+                      })
+                      .catch(error => {
+                        console.error('Test API error:', error);
+                        alert('API Test: ERROR - ' + error.message);
+                      });
+                    }}
+                  >
+                    Test API
                   </button>
                 </div>
               </div>

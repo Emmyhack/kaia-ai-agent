@@ -7,14 +7,52 @@ const nextConfig = {
     KAIASCAN_API_KEY: process.env.KAIASCAN_API_KEY,
     CONTRACT_ADDRESS: process.env.CONTRACT_ADDRESS,
   },
-  webpack: (config) => {
-    config.resolve.fallback = {
-      ...config.resolve.fallback,
-      fs: false,
-      net: false,
-      tls: false,
+  webpack: (config, { isServer }) => {
+    // Optimize for production builds
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+        crypto: false,
+        stream: false,
+        url: false,
+        zlib: false,
+        http: false,
+        https: false,
+        assert: false,
+        os: false,
+        path: false,
+      };
+    }
+
+    // Reduce bundle size
+    config.optimization = {
+      ...config.optimization,
+      splitChunks: {
+        chunks: 'all',
+        cacheGroups: {
+          vendor: {
+            test: /[\\/]node_modules[\\/]/,
+            name: 'vendors',
+            chunks: 'all',
+          },
+        },
+      },
     };
+
     return config;
+  },
+  // Reduce build output
+  experimental: {
+    optimizeCss: true,
+  },
+  // Compress static assets
+  compress: true,
+  // Reduce image optimization
+  images: {
+    unoptimized: true,
   },
 };
 

@@ -24,15 +24,23 @@ export default function Home() {
   const checkWalletConnection = async () => {
     if (typeof window !== 'undefined' && window.ethereum) {
       try {
+        console.log('Checking for existing wallet connection...');
         const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+        console.log('Existing accounts:', accounts);
+        
         if (accounts.length > 0) {
+          console.log('Found existing connection:', accounts[0]);
           setWalletAddress(accounts[0]);
           setIsConnected(true);
           await updateBalance(accounts[0]);
+        } else {
+          console.log('No existing wallet connection found');
         }
       } catch (error) {
         console.error('Error checking wallet connection:', error);
       }
+    } else {
+      console.log('MetaMask not detected');
     }
   };
 
@@ -62,6 +70,7 @@ export default function Home() {
   };
 
   const handleWalletConnect = (address) => {
+    console.log('Wallet connected with address:', address);
     setWalletAddress(address);
     setIsConnected(true);
     updateBalance(address);

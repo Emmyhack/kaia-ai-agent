@@ -12,26 +12,37 @@ export default function WalletConnection({ isConnected, walletAddress, balance, 
 
     setIsConnecting(true);
     try {
+      console.log('Starting wallet connection...');
+      
       // Request account access
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      console.log('Accounts received:', accounts);
       
       if (accounts.length > 0) {
         const account = accounts[0];
+        console.log('Selected account:', account);
         
         // Check if we're on the correct network (Kaia testnet)
         const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-        const kaiaTestnetChainId = '0x3e9'; // 1001 in hex
+        console.log('Current chain ID:', chainId);
+        
+        // Kaia testnet chain ID (1001 in decimal = 0x3e9 in hex)
+        const kaiaTestnetChainId = '0x3e9';
         
         if (chainId !== kaiaTestnetChainId) {
+          console.log('Switching to Kaia testnet...');
           try {
             // Try to switch to Kaia testnet
             await window.ethereum.request({
               method: 'wallet_switchEthereumChain',
               params: [{ chainId: kaiaTestnetChainId }],
             });
+            console.log('Successfully switched to Kaia testnet');
           } catch (switchError) {
+            console.log('Switch error:', switchError);
             // If the network doesn't exist, add it
             if (switchError.code === 4902) {
+              console.log('Adding Kaia testnet to MetaMask...');
               try {
                 await window.ethereum.request({
                   method: 'wallet_addEthereumChain',
@@ -47,25 +58,34 @@ export default function WalletConnection({ isConnected, walletAddress, balance, 
                     blockExplorerUrls: ['https://kaiascope.com'],
                   }],
                 });
+                console.log('Successfully added Kaia testnet');
               } catch (addError) {
+                console.error('Failed to add network:', addError);
                 toast.error('Failed to add Kaia testnet. Please add it manually in MetaMask.');
                 setIsConnecting(false);
                 return;
               }
             } else {
+              console.error('Failed to switch network:', switchError);
               toast.error('Failed to switch to Kaia testnet. Please switch manually in MetaMask.');
               setIsConnecting(false);
               return;
             }
           }
+        } else {
+          console.log('Already on Kaia testnet');
         }
         
+        console.log('Connecting wallet with account:', account);
         onConnect(account);
         toast.success('Wallet connected successfully!');
+      } else {
+        console.log('No accounts found');
+        toast.error('No accounts found. Please unlock MetaMask and try again.');
       }
     } catch (error) {
       console.error('Error connecting wallet:', error);
-      toast.error('Failed to connect wallet. Please try again.');
+      toast.error(`Failed to connect wallet: ${error.message}`);
     } finally {
       setIsConnecting(false);
     }

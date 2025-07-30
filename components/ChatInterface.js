@@ -1,33 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
-import { PaperAirplaneIcon, SparklesIcon } from '@heroicons/react/24/outline';
-import { toast } from 'react-hot-toast';
-import MessageBubble from './MessageBubble';
-import TypingIndicator from './TypingIndicator';
+import { SendIcon, BotIcon, UserIcon } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export default function ChatInterface({ walletAddress, isWalletConnected, onBalanceUpdate }) {
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      type: 'agent',
-      content: `Hi! I'm your Kaia AI Agent. I can help you with:
-
-• **Token Swapping** - Swap between any tokens and KAIA
-• **Balance Checking** - Check your token balances
-• **Token Sending** - Send KAIA to other addresses  
-• **Yield Farming** - Manage your yield farm positions
-• **Trade Analysis** - Analyze your on-chain activities
-• **Fiat Conversion** - Get info about fiat-to-KAIA conversion
-
-${isWalletConnected ? `Your wallet is connected: ${walletAddress?.slice(0, 6)}...${walletAddress?.slice(-4)}` : 'Please connect your wallet to get started.'}
-
-What would you like to do today?`,
-      timestamp: new Date(),
-    }
-  ]);
-  const [inputMessage, setInputMessage] = useState('');
+  const [messages, setMessages] = useState([]);
+  const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
-  const inputRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -37,27 +16,25 @@ What would you like to do today?`,
     scrollToBottom();
   }, [messages]);
 
-  const suggestedQueries = [
-    "Check my KAIA balance",
-    "Swap 10 KAIA to USDT",
-    "What are my yield farming positions?",
-    "Analyze my recent trades",
-    "How to convert USD to KAIA?",
-    "Send 5 KAIA to 0x...",
-  ];
-
-  const handleSendMessage = async () => {
-    if (!inputMessage.trim()) return;
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!inputValue.trim()) return;
+    
+    if (!isWalletConnected) {
+      toast.error('Please connect your wallet first');
+      return;
+    }
 
     const userMessage = {
       id: Date.now(),
       type: 'user',
-      content: inputMessage,
-      timestamp: new Date(),
+      content: inputValue,
+      timestamp: new Date().toISOString(),
     };
 
     setMessages(prev => [...prev, userMessage]);
-    setInputMessage('');
+    setInputValue('');
     setIsLoading(true);
 
     try {
@@ -67,7 +44,7 @@ What would you like to do today?`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          prompt: inputMessage,
+          prompt: inputValue,
           userAddress: walletAddress,
         }),
       });
@@ -75,160 +52,228 @@ What would you like to do today?`,
       const data = await response.json();
 
       if (data.success) {
-        const agentMessage = {
+        const aiMessage = {
           id: Date.now() + 1,
-          type: 'agent',
+          type: 'ai',
           content: data.response,
-          timestamp: new Date(),
-          toolCalls: data.toolCalls,
-          steps: data.steps,
+          toolCalls: data.toolCalls || [],
+          timestamp: new Date().toISOString(),
         };
 
-        setMessages(prev => [...prev, agentMessage]);
+        setMessages(prev => [...prev, aiMessage]);
 
-        // Check if balance was updated and refresh
-        const hasBalanceUpdate = data.toolCalls?.some(call => 
-          ['checkBalance', 'sendTokens', 'swapTokens'].includes(call.toolName)
-        );
-        
-        if (hasBalanceUpdate && walletAddress && onBalanceUpdate) {
-          setTimeout(() => onBalanceUpdate(walletAddress), 1000);
+        // Update balance if balance-related tools were called
+        if (data.toolCalls?.some(call => call.toolName === 'checkBalance')) {
+          onBalanceUpdate(walletAddress);
         }
-
-        // Show success toast for successful operations
-        const hasSuccessfulOperation = data.toolCalls?.some(call => 
-          call.result?.success && ['swapTokens', 'sendTokens'].includes(call.toolName)
-        );
-        
-        if (hasSuccessfulOperation) {
-          toast.success('Operation completed successfully!');
-        }
-
       } else {
-        throw new Error(data.error || 'Failed to get response from agent');
+        const errorMessage = {
+          id: Date.now() + 1,
+          type: 'ai',
+          content: 'Sorry, I encountered an error processing your request. Please try again.',
+          isError: true,
+          timestamp: new Date().toISOString(),
+        };
+        setMessages(prev => [...prev, errorMessage]);
       }
-
     } catch (error) {
       console.error('Error sending message:', error);
-      
       const errorMessage = {
         id: Date.now() + 1,
-        type: 'agent',
-        content: `Sorry, I encountered an error: ${error.message}. Please try again.`,
-        timestamp: new Date(),
+        type: 'ai',
+        content: 'Sorry, I encountered an error processing your request. Please try again.',
         isError: true,
+        timestamp: new Date().toISOString(),
       };
-
       setMessages(prev => [...prev, errorMessage]);
-      toast.error('Failed to process your request');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
+  const formatTime = (timestamp) => {
+    return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const renderToolCall = (toolCall) => {
+    const { toolName, result } = toolCall;
+    
+    if (!result || !result.success) {
+      return (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 mt-2">
+          <div className="text-red-400 text-sm font-medium">Tool Error</div>
+          <div className="text-red-300 text-xs">{result?.error || 'Unknown error'}</div>
+        </div>
+      );
+    }
+
+    switch (toolName) {
+      case 'checkBalance':
+        return (
+          <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 mt-2">
+            <div className="text-green-400 text-sm font-medium">Balance Checked</div>
+            <div className="text-green-300 text-sm">
+              Balance: {result.balance} {result.tokenName || 'KAIA'}
+            </div>
+          </div>
+        );
+      
+      case 'swapTokens':
+        return (
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mt-2">
+            <div className="text-blue-400 text-sm font-medium">Swap Executed</div>
+            <div className="text-blue-300 text-sm">
+              Transaction: {result.transactionHash?.slice(0, 10)}...
+            </div>
+          </div>
+        );
+      
+      case 'sendTokens':
+        return (
+          <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3 mt-2">
+            <div className="text-purple-400 text-sm font-medium">Tokens Sent</div>
+            <div className="text-purple-300 text-sm">
+              Transaction: {result.transactionHash?.slice(0, 10)}...
+            </div>
+          </div>
+        );
+      
+      default:
+        return (
+          <div className="bg-gray-500/10 border border-gray-500/20 rounded-lg p-3 mt-2">
+            <div className="text-gray-400 text-sm font-medium">{toolName}</div>
+            <div className="text-gray-300 text-sm">Executed successfully</div>
+          </div>
+        );
     }
   };
 
-  const handleSuggestedQuery = (query) => {
-    setInputMessage(query);
-    inputRef.current?.focus();
-  };
-
-  const clearChat = () => {
-    setMessages([messages[0]]); // Keep the initial greeting message
-    toast.success('Chat cleared');
-  };
-
   return (
-    <div className="bg-white rounded-lg shadow-lg flex flex-col h-[600px]">
-      {/* Chat Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200">
-        <div className="flex items-center space-x-2">
-          <SparklesIcon className="h-6 w-6 text-indigo-600" />
-          <h2 className="text-lg font-semibold text-gray-800">Kaia AI Agent</h2>
-          <div className="flex items-center space-x-1">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            <span className="text-sm text-green-600">Online</span>
+    <div className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 h-[600px] flex flex-col">
+      {/* Header */}
+      <div className="p-6 border-b border-white/10">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+            <BotIcon className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-white">AI Assistant</h3>
+            <p className="text-sm text-gray-300">
+              {isWalletConnected ? 'Connected to Kaia Network' : 'Connect wallet to start'}
+            </p>
           </div>
         </div>
-        
-        <button
-          onClick={clearChat}
-          className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
-        >
-          Clear Chat
-        </button>
       </div>
 
-      {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => (
-          <MessageBubble key={message.id} message={message} />
-        ))}
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        {messages.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <BotIcon className="w-8 h-8 text-white" />
+            </div>
+            <h3 className="text-xl font-semibold text-white mb-2">Welcome to Kaia AI Agent</h3>
+            <p className="text-gray-300 mb-6">
+              I can help you with blockchain operations on the Kaia network. Try asking me to:
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+              <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+                <div className="text-blue-400 font-medium">Check Balance</div>
+                <div className="text-gray-400">"What's my KAIA balance?"</div>
+              </div>
+              <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+                <div className="text-purple-400 font-medium">Swap Tokens</div>
+                <div className="text-gray-400">"Swap 10 KAIA for USDC"</div>
+              </div>
+              <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+                <div className="text-green-400 font-medium">Send Tokens</div>
+                <div className="text-gray-400">"Send 5 KAIA to 0x..."</div>
+              </div>
+              <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+                <div className="text-yellow-400 font-medium">Yield Farming</div>
+                <div className="text-gray-400">"Show my yield farms"</div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          messages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              <div
+                className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                  message.type === 'user'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
+                    : message.isError
+                    ? 'bg-red-500/10 border border-red-500/20 text-red-300'
+                    : 'bg-white/10 border border-white/20 text-white'
+                }`}
+              >
+                <div className="flex items-start space-x-3">
+                  {message.type === 'user' ? (
+                    <UserIcon className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                  ) : (
+                    <BotIcon className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                  )}
+                  <div className="flex-1">
+                    <div className="whitespace-pre-wrap">{message.content}</div>
+                    {message.toolCalls && message.toolCalls.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {message.toolCalls.map((toolCall, index) => (
+                          <div key={index}>
+                            {renderToolCall(toolCall)}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="text-xs opacity-60 mt-2">
+                      {formatTime(message.timestamp)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
         
-        {isLoading && <TypingIndicator />}
+        {isLoading && (
+          <div className="flex justify-start">
+            <div className="bg-white/10 border border-white/20 rounded-2xl px-4 py-3">
+              <div className="flex items-center space-x-3">
+                <BotIcon className="w-5 h-5 text-white" />
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-white rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                  <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Suggested Queries */}
-      {messages.length === 1 && !isLoading && (
-        <div className="px-4 py-2 border-t border-gray-100">
-          <p className="text-sm text-gray-600 mb-2">Try asking:</p>
-          <div className="flex flex-wrap gap-2">
-            {suggestedQueries.map((query, index) => (
-              <button
-                key={index}
-                onClick={() => handleSuggestedQuery(query)}
-                className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-full transition-colors"
-              >
-                {query}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Input Area */}
-      <div className="p-4 border-t border-gray-200">
-        {!isWalletConnected && (
-          <div className="mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
-            <p className="text-sm text-yellow-800">
-              💡 Connect your wallet to perform blockchain operations
-            </p>
-          </div>
-        )}
-        
-        <div className="flex space-x-2">
-          <div className="flex-1 relative">
-            <textarea
-              ref={inputRef}
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder={isWalletConnected ? "Ask me anything about Kaia blockchain..." : "Connect wallet to get started..."}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
-              rows="2"
-              disabled={isLoading}
-            />
-          </div>
-          
+      {/* Input */}
+      <div className="p-6 border-t border-white/10">
+        <form onSubmit={handleSubmit} className="flex space-x-3">
+          <input
+            type="text"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            placeholder={isWalletConnected ? "Ask me anything about Kaia blockchain..." : "Connect wallet to start chatting"}
+            disabled={!isWalletConnected || isLoading}
+            className="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+          />
           <button
-            onClick={handleSendMessage}
-            disabled={!inputMessage.trim() || isLoading}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            type="submit"
+            disabled={!inputValue.trim() || !isWalletConnected || isLoading}
+            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 rounded-xl transition-all duration-200 transform hover:scale-105"
           >
-            <PaperAirplaneIcon className="h-5 w-5" />
+            <SendIcon className="w-5 h-5" />
           </button>
-        </div>
-        
-        <div className="mt-2 text-xs text-gray-500 text-center">
-          Powered by Google Gemini AI • Kaia Blockchain
-        </div>
+        </form>
       </div>
     </div>
   );

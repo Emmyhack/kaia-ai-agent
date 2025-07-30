@@ -74,30 +74,54 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       <Head>
-        <title>Kaia AI Agent - Blockchain Assistant</title>
-        <meta name="description" content="AI-powered blockchain agent for Kaia network" />
+        <title>Kaia AI Agent - Intelligent Blockchain Assistant</title>
+        <meta name="description" content="AI-powered blockchain agent for Kaia network with advanced DeFi capabilities" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <Toaster position="top-right" />
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: '#1e293b',
+            color: '#f8fafc',
+            border: '1px solid #475569',
+          },
+        }}
+      />
 
-      <main className="container mx-auto px-4 py-8">
+      {/* Animated Background */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-purple-600/20 to-pink-600/20 animate-pulse"></div>
+        <div className="absolute top-0 left-0 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-bounce"></div>
+        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-pink-500/10 rounded-full blur-3xl animate-bounce"></div>
+      </div>
+
+      <main className="relative z-10 container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-800 mb-4">
-            🤖 Kaia AI Agent
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full mb-6 shadow-2xl">
+            <div className="text-3xl">🤖</div>
+          </div>
+          <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-6">
+            Kaia AI Agent
           </h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Your intelligent blockchain assistant for Kaia network. Swap tokens, check balances, 
-            analyze yields, and manage your DeFi activities with natural language commands.
+          <p className="text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
+            Your intelligent blockchain assistant for the Kaia network. 
+            <span className="text-purple-400 font-semibold"> Swap tokens</span>, 
+            <span className="text-blue-400 font-semibold"> check balances</span>, 
+            <span className="text-green-400 font-semibold"> analyze yields</span>, and 
+            <span className="text-pink-400 font-semibold"> manage DeFi activities</span> 
+            with natural language commands.
           </p>
         </div>
 
         {/* Wallet Connection */}
-        <div className="mb-6">
+        <div className="mb-8">
           <WalletConnection
             isConnected={isConnected}
             walletAddress={walletAddress}
@@ -107,86 +131,135 @@ export default function Home() {
           />
         </div>
 
-        {/* Agent Stats */}
-        {isConnected && (
-          <div className="mb-6">
-            <AgentStats walletAddress={walletAddress} />
-          </div>
-        )}
-
-        {/* Main Chat Interface */}
+        {/* Main Content */}
         {isLoading ? (
           <div className="flex justify-center items-center h-64">
-            <div className="text-lg text-gray-600">Loading...</div>
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+              <div className="text-lg text-gray-300">Loading AI Agent...</div>
+            </div>
           </div>
         ) : (
-          <div className="max-w-4xl mx-auto">
-            <ChatInterface 
-              walletAddress={walletAddress}
-              isWalletConnected={isConnected}
-              onBalanceUpdate={updateBalance}
-            />
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            {/* Chat Interface */}
+            <div className="lg:col-span-3">
+              <ChatInterface 
+                walletAddress={walletAddress}
+                isWalletConnected={isConnected}
+                onBalanceUpdate={updateBalance}
+              />
+            </div>
+
+            {/* Sidebar */}
+            <div className="lg:col-span-1 space-y-6">
+              {/* Agent Stats */}
+              {isConnected && (
+                <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10">
+                  <AgentStats walletAddress={walletAddress} />
+                </div>
+              )}
+
+              {/* Quick Actions */}
+              <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10">
+                <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
+                <div className="space-y-3">
+                  <button className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105">
+                    Check Balance
+                  </button>
+                  <button className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105">
+                    Swap Tokens
+                  </button>
+                  <button className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105">
+                    Yield Farming
+                  </button>
+                </div>
+              </div>
+
+              {/* Network Status */}
+              <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10">
+                <h3 className="text-lg font-semibold text-white mb-4">Network Status</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-300">Network</span>
+                    <span className="text-green-400 font-semibold">Kaia Testnet</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-300">Status</span>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                      <span className="text-green-400 text-sm">Connected</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
         {/* Features Section */}
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-          <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-            <div className="text-2xl mb-3">🔄</div>
-            <h3 className="text-lg font-semibold mb-2">Token Swapping</h3>
-            <p className="text-gray-600 text-sm">
-              Swap between any tokens and KAIA with intelligent routing and best price discovery.
-            </p>
-          </div>
+        <div className="mt-16">
+          <h2 className="text-3xl font-bold text-center text-white mb-12">Powerful DeFi Features</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="group bg-white/5 backdrop-blur-lg rounded-2xl p-8 border border-white/10 hover:border-purple-500/50 transition-all duration-300 transform hover:scale-105">
+              <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300">🔄</div>
+              <h3 className="text-xl font-semibold text-white mb-3">Smart Token Swapping</h3>
+              <p className="text-gray-300 leading-relaxed">
+                Swap between any tokens and KAIA with intelligent routing, best price discovery, and minimal slippage.
+              </p>
+            </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-            <div className="text-2xl mb-3">💰</div>
-            <h3 className="text-lg font-semibold mb-2">Balance Checking</h3>
-            <p className="text-gray-600 text-sm">
-              Check your KAIA and token balances across multiple addresses instantly.
-            </p>
-          </div>
+            <div className="group bg-white/5 backdrop-blur-lg rounded-2xl p-8 border border-white/10 hover:border-blue-500/50 transition-all duration-300 transform hover:scale-105">
+              <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300">💰</div>
+              <h3 className="text-xl font-semibold text-white mb-3">Real-time Balances</h3>
+              <p className="text-gray-300 leading-relaxed">
+                Check your KAIA and token balances across multiple addresses with instant updates and detailed analytics.
+              </p>
+            </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-            <div className="text-2xl mb-3">📤</div>
-            <h3 className="text-lg font-semibold mb-2">Token Sending</h3>
-            <p className="text-gray-600 text-sm">
-              Send KAIA tokens to any address with simple natural language commands.
-            </p>
-          </div>
+            <div className="group bg-white/5 backdrop-blur-lg rounded-2xl p-8 border border-white/10 hover:border-green-500/50 transition-all duration-300 transform hover:scale-105">
+              <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300">📤</div>
+              <h3 className="text-xl font-semibold text-white mb-3">Secure Token Transfers</h3>
+              <p className="text-gray-300 leading-relaxed">
+                Send KAIA tokens to any address with enhanced security, transaction monitoring, and instant confirmations.
+              </p>
+            </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-            <div className="text-2xl mb-3">🌾</div>
-            <h3 className="text-lg font-semibold mb-2">Yield Farming</h3>
-            <p className="text-gray-600 text-sm">
-              Deposit tokens to yield farms and track your earnings automatically.
-            </p>
-          </div>
+            <div className="group bg-white/5 backdrop-blur-lg rounded-2xl p-8 border border-white/10 hover:border-yellow-500/50 transition-all duration-300 transform hover:scale-105">
+              <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300">🌾</div>
+              <h3 className="text-xl font-semibold text-white mb-3">Advanced Yield Farming</h3>
+              <p className="text-gray-300 leading-relaxed">
+                Deposit tokens to yield farms, track earnings, and optimize your DeFi strategies with AI-powered insights.
+              </p>
+            </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-            <div className="text-2xl mb-3">📊</div>
-            <h3 className="text-lg font-semibold mb-2">Trade Analysis</h3>
-            <p className="text-gray-600 text-sm">
-              Analyze your on-chain trading activities and get personalized insights.
-            </p>
-          </div>
+            <div className="group bg-white/5 backdrop-blur-lg rounded-2xl p-8 border border-white/10 hover:border-pink-500/50 transition-all duration-300 transform hover:scale-105">
+              <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300">📊</div>
+              <h3 className="text-xl font-semibold text-white mb-3">Trade Analytics</h3>
+              <p className="text-gray-300 leading-relaxed">
+                Analyze your on-chain trading activities with detailed charts, performance metrics, and personalized insights.
+              </p>
+            </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-            <div className="text-2xl mb-3">💱</div>
-            <h3 className="text-lg font-semibold mb-2">Fiat Conversion</h3>
-            <p className="text-gray-600 text-sm">
-              Get information about converting fiat currency to KAIA tokens.
-            </p>
+            <div className="group bg-white/5 backdrop-blur-lg rounded-2xl p-8 border border-white/10 hover:border-indigo-500/50 transition-all duration-300 transform hover:scale-105">
+              <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300">💱</div>
+              <h3 className="text-xl font-semibold text-white mb-3">Fiat Integration</h3>
+              <p className="text-gray-300 leading-relaxed">
+                Get real-time exchange rates and seamless fiat-to-crypto conversion with trusted on-ramp services.
+              </p>
+            </div>
           </div>
         </div>
 
         {/* Footer */}
-        <footer className="mt-16 text-center text-gray-500 text-sm">
-          <p>
-            Built with ❤️ for the Kaia blockchain ecosystem. 
-            <br />
-            Powered by AI and smart contracts for seamless DeFi interactions.
-          </p>
+        <footer className="mt-20 text-center">
+          <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-8 border border-white/10">
+            <p className="text-gray-300 mb-4">
+              Built with ❤️ for the Kaia blockchain ecosystem
+            </p>
+            <p className="text-gray-400 text-sm">
+              Powered by AI and smart contracts for seamless DeFi interactions
+            </p>
+          </div>
         </footer>
       </main>
     </div>

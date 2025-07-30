@@ -1,12 +1,19 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { SendIcon, BotIcon, UserIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-export default function ChatInterface({ walletAddress, isWalletConnected, onBalanceUpdate }) {
+const ChatInterface = forwardRef(function ChatInterface({ walletAddress, isWalletConnected, onBalanceUpdate, onAiError }, ref) {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
+
+  useImperativeHandle(ref, () => ({
+    sendPrompt: (prompt) => {
+      setInputValue(prompt);
+      handleSubmit({ preventDefault: () => {} }, prompt);
+    },
+  }));
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -16,27 +23,24 @@ export default function ChatInterface({ walletAddress, isWalletConnected, onBala
     scrollToBottom();
   }, [messages]);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e, overridePrompt) => {
     e.preventDefault();
-    
-    if (!inputValue.trim()) return;
-    
+    const prompt = overridePrompt !== undefined ? overridePrompt : inputValue;
+    if (!prompt.trim()) return;
     if (!isWalletConnected) {
       toast.error('Please connect your wallet first');
       return;
     }
-
     const userMessage = {
       id: Date.now(),
       type: 'user',
-      content: inputValue,
+      content: prompt,
       timestamp: new Date().toISOString(),
     };
-
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
     setIsLoading(true);
-
+    if (onAiError) onAiError(null);
     try {
       const response = await fetch('/api/agent', {
         method: 'POST',
@@ -44,13 +48,11 @@ export default function ChatInterface({ walletAddress, isWalletConnected, onBala
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          prompt: inputValue,
+          prompt,
           userAddress: walletAddress,
         }),
       });
-
       const data = await response.json();
-
       if (data.success) {
         const aiMessage = {
           id: Date.now() + 1,
@@ -59,10 +61,7 @@ export default function ChatInterface({ walletAddress, isWalletConnected, onBala
           toolCalls: data.toolCalls || [],
           timestamp: new Date().toISOString(),
         };
-
         setMessages(prev => [...prev, aiMessage]);
-
-        // Update balance if balance-related tools were called
         if (data.toolCalls?.some(call => call.toolName === 'checkBalance')) {
           onBalanceUpdate(walletAddress);
         }
@@ -70,11 +69,12 @@ export default function ChatInterface({ walletAddress, isWalletConnected, onBala
         const errorMessage = {
           id: Date.now() + 1,
           type: 'ai',
-          content: 'Sorry, I encountered an error processing your request. Please try again.',
+          content: data.error || 'Sorry, I encountered an error processing your request. Please try again.',
           isError: true,
           timestamp: new Date().toISOString(),
         };
         setMessages(prev => [...prev, errorMessage]);
+        if (onAiError) onAiError(data.details || data.error || 'Unknown error');
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -86,6 +86,7 @@ export default function ChatInterface({ walletAddress, isWalletConnected, onBala
         timestamp: new Date().toISOString(),
       };
       setMessages(prev => [...prev, errorMessage]);
+      if (onAiError) onAiError(error.message);
     } finally {
       setIsLoading(false);
     }
@@ -277,4 +278,6 @@ export default function ChatInterface({ walletAddress, isWalletConnected, onBala
       </div>
     </div>
   );
-}
+});
+
+export default ChatInterface;

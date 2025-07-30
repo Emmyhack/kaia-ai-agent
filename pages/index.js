@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import dynamic from 'next/dynamic';
 import { Toaster } from 'react-hot-toast';
@@ -13,6 +13,8 @@ export default function Home() {
   const [isConnected, setIsConnected] = useState(false);
   const [balance, setBalance] = useState('0');
   const [isLoading, setIsLoading] = useState(true);
+  const chatRef = useRef();
+  const [aiError, setAiError] = useState(null);
 
   useEffect(() => {
     // Check if wallet is already connected
@@ -80,6 +82,13 @@ export default function Home() {
     setWalletAddress('');
     setIsConnected(false);
     setBalance('0');
+  };
+
+  // Function to send a prompt to the chat bot programmatically
+  const sendPrompt = (prompt) => {
+    if (chatRef.current && chatRef.current.sendPrompt) {
+      chatRef.current.sendPrompt(prompt);
+    }
   };
 
   return (
@@ -155,11 +164,19 @@ export default function Home() {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {/* Chat Interface */}
             <div className="lg:col-span-3">
-              <ChatInterface 
+              <ChatInterface
+                ref={chatRef}
                 walletAddress={walletAddress}
                 isWalletConnected={isConnected}
                 onBalanceUpdate={updateBalance}
+                onAiError={setAiError}
               />
+              {aiError && (
+                <div className="mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-300">
+                  <div className="font-semibold">AI Error:</div>
+                  <div>{aiError}</div>
+                </div>
+              )}
             </div>
 
             {/* Sidebar */}
@@ -175,13 +192,22 @@ export default function Home() {
               <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10">
                 <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
                 <div className="space-y-3">
-                  <button className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105">
+                  <button
+                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105"
+                    onClick={() => sendPrompt('Check my KAIA balance')}
+                  >
                     Check Balance
                   </button>
-                  <button className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105">
+                  <button
+                    className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105"
+                    onClick={() => sendPrompt('Swap 10 KAIA for USDC')}
+                  >
                     Swap Tokens
                   </button>
-                  <button className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105">
+                  <button
+                    className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105"
+                    onClick={() => sendPrompt('Show my yield farms')}
+                  >
                     Yield Farming
                   </button>
                 </div>

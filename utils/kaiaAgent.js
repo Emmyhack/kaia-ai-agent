@@ -914,15 +914,16 @@ class KaiaAgentService {
     }
   }
 
-  async getSwapQuote(tokenIn, tokenOut, amountIn) {
+  async getSwapQuote(tokenIn, tokenOut, amountIn, network = 'testnet') {
     await this.initialize();
     
-    if (!this.testnetContract && !this.mainnetContract) {
-      throw new Error('Contract not initialized for any network');
+    const contract = network === 'mainnet' ? this.mainnetContract : this.testnetContract;
+    
+    if (!contract) {
+      throw new Error('Contract not initialized for the specified network');
     }
 
     try {
-      const contract = this.testnetContract || this.mainnetContract;
       const [amountOut, feeAmount] = await contract.getSwapQuote(
         tokenIn,
         tokenOut,
@@ -933,12 +934,15 @@ class KaiaAgentService {
         success: true,
         amountOut: ethers.formatEther(amountOut),
         feeAmount: ethers.formatEther(feeAmount),
+        network: network,
+        isReal: true,
       };
     } catch (error) {
       console.error('Get swap quote failed:', error);
       return {
         success: false,
         error: error.message,
+        network: network,
       };
     }
   }

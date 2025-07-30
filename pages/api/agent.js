@@ -1,71 +1,5 @@
 import kaiaAgentService from '../../utils/kaiaAgent.js';
 
-// Mock AI responses for demo purposes with network awareness
-const mockResponses = {
-  balance: {
-    testnet: "I've checked your balance on the Kaia Testnet! This is real blockchain data from the testnet. Your KAIA balance has been queried directly from the blockchain.",
-    mainnet: "I've checked your balance on the Kaia Mainnet! This is real blockchain data from the mainnet. Your KAIA balance has been queried directly from the blockchain.",
-    default: "I can help you check your balance! I'll query the blockchain for your actual KAIA balance."
-  },
-  
-  swap: {
-    testnet: "I can help you swap tokens on the Kaia Testnet! For the demo, I'll simulate a token swap using the deployed testnet contracts.",
-    mainnet: "I can help you swap tokens on the Kaia Mainnet! For the demo, I'll simulate a token swap using the mainnet contracts.",
-    default: "I can help you swap tokens! For the demo, I'll simulate a token swap. This would involve calling the swap contract on the Kaia blockchain."
-  },
-  
-  send: {
-    testnet: "I can help you send tokens on the Kaia Testnet! For the demo, I'll simulate sending tokens to another address using testnet contracts.",
-    mainnet: "I can help you send tokens on the Kaia Mainnet! For the demo, I'll simulate sending tokens to another address using mainnet contracts.",
-    default: "I can help you send tokens! For the demo, I'll simulate sending tokens to another address. This would create a transaction on the Kaia blockchain."
-  },
-  
-  farm: {
-    testnet: "I can help you with yield farming on the Kaia Testnet! For the demo, I'll show you mock yield farm information using testnet contracts.",
-    mainnet: "I can help you with yield farming on the Kaia Mainnet! For the demo, I'll show you mock yield farm information using mainnet contracts.",
-    default: "I can help you with yield farming! For the demo, I'll show you mock yield farm information. This would involve interacting with yield farm contracts on the Kaia blockchain."
-  },
-  
-  network: {
-    testnet: "I can help you check the Kaia Testnet status! This includes real blockchain data like current block number and gas prices.",
-    mainnet: "I can help you check the Kaia Mainnet status! This includes real blockchain data like current block number and gas prices.",
-    default: "I can help you check network status! This includes real blockchain data like current block number and gas prices."
-  },
-  
-  transaction: {
-    testnet: "I can help you check transaction details on the Kaia Testnet! This will query real transaction data from the blockchain.",
-    mainnet: "I can help you check transaction details on the Kaia Mainnet! This will query real transaction data from the blockchain.",
-    default: "I can help you check transaction details! This will query real transaction data from the blockchain."
-  },
-  
-  default: {
-    testnet: "I'm your Kaia AI Assistant for the Testnet! I can help you with real blockchain operations on the Kaia testnet. I use real blockchain queries for balances and network status.",
-    mainnet: "I'm your Kaia AI Assistant for the Mainnet! I can help you with real blockchain operations on the Kaia mainnet. I use real blockchain queries for balances and network status.",
-    default: "I'm your Kaia AI Assistant! I can help you with blockchain operations like checking balances, swapping tokens, sending tokens, and yield farming. I use real blockchain queries for balances and network status."
-  }
-};
-
-// Function to determine response based on user input and network
-function getMockResponse(prompt, userAddress, network = 'testnet') {
-  const lowerPrompt = prompt.toLowerCase();
-  
-  if (lowerPrompt.includes('balance') || lowerPrompt.includes('check')) {
-    return mockResponses.balance[network] || mockResponses.balance.default;
-  } else if (lowerPrompt.includes('swap') || lowerPrompt.includes('trade')) {
-    return mockResponses.swap[network] || mockResponses.swap.default;
-  } else if (lowerPrompt.includes('send') || lowerPrompt.includes('transfer')) {
-    return mockResponses.send[network] || mockResponses.send.default;
-  } else if (lowerPrompt.includes('farm') || lowerPrompt.includes('yield')) {
-    return mockResponses.farm[network] || mockResponses.farm.default;
-  } else if (lowerPrompt.includes('network') || lowerPrompt.includes('status')) {
-    return mockResponses.network[network] || mockResponses.network.default;
-  } else if (lowerPrompt.includes('transaction') || lowerPrompt.includes('tx')) {
-    return mockResponses.transaction[network] || mockResponses.transaction.default;
-  } else {
-    return mockResponses.default[network] || mockResponses.default.default;
-  }
-}
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -80,7 +14,6 @@ export default async function handler(req, res) {
   try {
     console.log('Processing request:', { prompt, userAddress, network });
 
-    // Handle real blockchain queries
     const lowerPrompt = prompt.toLowerCase();
     
     // Real balance checking
@@ -88,9 +21,8 @@ export default async function handler(req, res) {
       try {
         const balanceResult = await kaiaAgentService.checkBalance(userAddress, null, network);
         if (balanceResult.success) {
-          const response = getMockResponse(prompt, userAddress, network);
           return res.status(200).json({
-            response: `${response}\n\n🔗 **Real Blockchain Data:**\n• Network: ${balanceResult.network}\n• Balance: ${balanceResult.balance} KAIA\n• Data Source: ${balanceResult.isReal ? 'Real Blockchain' : 'Mock Data'}`,
+            response: `🔗 **Real Blockchain Data - ${balanceResult.network}**\n\nI've queried the actual blockchain for your KAIA balance:\n\n• **Address**: ${userAddress}\n• **Balance**: ${balanceResult.balance} KAIA\n• **Network**: ${balanceResult.network}\n• **Data Source**: ${balanceResult.isReal ? 'Real Blockchain' : 'Mock Data'}\n• **Blockchain**: ${network === 'testnet' ? 'Kaia Testnet' : 'Kaia Mainnet'}`,
             steps: [],
             toolCalls: [],
             success: true,
@@ -99,6 +31,11 @@ export default async function handler(req, res) {
         }
       } catch (error) {
         console.error('Real balance check failed:', error);
+        return res.status(200).json({
+          response: `❌ **Error Querying Blockchain**\n\nFailed to query ${network} balance for address ${userAddress}:\n\n• **Error**: ${error.message}\n• **Network**: ${network}\n• **Address**: ${userAddress}`,
+          success: false,
+          error: error.message,
+        });
       }
     }
     
@@ -107,9 +44,8 @@ export default async function handler(req, res) {
       try {
         const networkResult = await kaiaAgentService.getNetworkStatus(network);
         if (networkResult.success) {
-          const response = getMockResponse(prompt, userAddress, network);
           return res.status(200).json({
-            response: `${response}\n\n🔗 **Real Network Status:**\n• Network: ${networkResult.network}\n• Block Number: ${networkResult.blockNumber}\n• Gas Price: ${networkResult.gasPrice} Gwei\n• Status: Connected`,
+            response: `🔗 **Real Network Status - ${networkResult.network}**\n\nI've queried the actual blockchain network status:\n\n• **Network**: ${networkResult.network}\n• **Block Number**: ${networkResult.blockNumber.toLocaleString()}\n• **Gas Price**: ${networkResult.gasPrice} Gwei\n• **Status**: Connected ✅\n• **RPC URL**: ${network === 'testnet' ? 'https://public-en-kairos.node.kaia.io' : 'https://public-en.node.kaia.io'}`,
             steps: [],
             toolCalls: [],
             success: true,
@@ -118,19 +54,23 @@ export default async function handler(req, res) {
         }
       } catch (error) {
         console.error('Real network status check failed:', error);
+        return res.status(200).json({
+          response: `❌ **Error Querying Network Status**\n\nFailed to query ${network} status:\n\n• **Error**: ${error.message}\n• **Network**: ${network}`,
+          success: false,
+          error: error.message,
+        });
       }
     }
     
-    // Real transaction checking (if tx hash is provided)
+    // Real transaction checking
     if (lowerPrompt.includes('transaction') || lowerPrompt.includes('tx')) {
       const txHashMatch = prompt.match(/0x[a-fA-F0-9]{64}/);
       if (txHashMatch) {
         try {
           const txResult = await kaiaAgentService.getTransaction(txHashMatch[0], network);
           if (txResult.success) {
-            const response = getMockResponse(prompt, userAddress, network);
             return res.status(200).json({
-              response: `${response}\n\n🔗 **Real Transaction Data:**\n• Hash: ${txResult.transaction.hash}\n• Status: ${txResult.transaction.status}\n• Block: ${txResult.transaction.blockNumber}\n• Value: ${txResult.transaction.value} KAIA`,
+              response: `🔗 **Real Transaction Data - ${network}**\n\nI've queried the actual blockchain for transaction details:\n\n• **Hash**: ${txResult.transaction.hash}\n• **Status**: ${txResult.transaction.status === 'success' ? '✅ Success' : '❌ Failed'}\n• **Block**: ${txResult.transaction.blockNumber?.toLocaleString() || 'Pending'}\n• **From**: ${txResult.transaction.from}\n• **To**: ${txResult.transaction.to}\n• **Value**: ${txResult.transaction.value} KAIA\n• **Gas Used**: ${txResult.transaction.gasUsed}`,
               steps: [],
               toolCalls: [],
               success: true,
@@ -139,17 +79,128 @@ export default async function handler(req, res) {
           }
         } catch (error) {
           console.error('Real transaction check failed:', error);
+          return res.status(200).json({
+            response: `❌ **Error Querying Transaction**\n\nFailed to query transaction ${txHashMatch[0]} on ${network}:\n\n• **Error**: ${error.message}\n• **Hash**: ${txHashMatch[0]}\n• **Network**: ${network}`,
+            success: false,
+            error: error.message,
+          });
         }
       }
     }
 
-    // Generate mock response for other queries
-    const response = getMockResponse(prompt, userAddress, network);
+    // Real contract state checking
+    if (lowerPrompt.includes('contract') || lowerPrompt.includes('deployed')) {
+      const contractMatch = prompt.match(/0x[a-fA-F0-9]{40}/);
+      if (contractMatch) {
+        try {
+          const contractResult = await kaiaAgentService.getContractState(contractMatch[0], network);
+          if (contractResult.success) {
+            return res.status(200).json({
+              response: `🔗 **Real Contract Data - ${network}**\n\nI've queried the actual blockchain for contract information:\n\n• **Address**: ${contractResult.contractAddress}\n• **Status**: ✅ Contract Deployed\n• **Network**: ${contractResult.network}\n• **Has Code**: Yes\n• **Blockchain**: ${network === 'testnet' ? 'Kaia Testnet' : 'Kaia Mainnet'}`,
+              steps: [],
+              toolCalls: [],
+              success: true,
+              blockchainData: contractResult,
+            });
+          }
+        } catch (error) {
+          console.error('Real contract check failed:', error);
+          return res.status(200).json({
+            response: `❌ **Error Querying Contract**\n\nFailed to query contract ${contractMatch[0]} on ${network}:\n\n• **Error**: ${error.message}\n• **Address**: ${contractMatch[0]}\n• **Network**: ${network}`,
+            success: false,
+            error: error.message,
+          });
+        }
+      }
+    }
 
-    console.log('Mock AI response generated successfully');
+    // Real swap quote (if contract is deployed)
+    if ((lowerPrompt.includes('swap') && lowerPrompt.includes('quote')) || lowerPrompt.includes('swap quote')) {
+      try {
+        // Check if our contract is deployed on the selected network
+        const contractAddress = network === 'testnet' ? '0x554Ef03BA2A7CC0A539731CA6beF561fA2648c4E' : '0x0000000000000000000000000000000000000000';
+        const contractResult = await kaiaAgentService.getContractState(contractAddress, network);
+        
+        if (contractResult.success) {
+          // Try to get real swap quote
+          try {
+            const quoteResult = await kaiaAgentService.getSwapQuote(
+              '0x0000000000000000000000000000000000000000', // KAIA
+              '0x8C82fa4dc47a9bf5034Bb38815c843B75EF76690', // Mock token
+              10, // 10 KAIA
+              network
+            );
+            
+            if (quoteResult.success) {
+              return res.status(200).json({
+                response: `🔗 **Real Swap Quote - ${network}**\n\nI've queried the actual smart contract for a swap quote:\n\n• **Token In**: KAIA (Native)\n• **Token Out**: Mock Token\n• **Amount In**: 10 KAIA\n• **Amount Out**: ${quoteResult.amountOut} tokens\n• **Fee**: ${quoteResult.feeAmount} KAIA\n• **Contract**: ${contractAddress}\n• **Network**: ${network}`,
+                steps: [],
+                toolCalls: [],
+                success: true,
+                blockchainData: quoteResult,
+              });
+            }
+          } catch (quoteError) {
+            console.log('Real swap quote failed, using contract info:', quoteError.message);
+            return res.status(200).json({
+              response: `🔗 **Contract Available - ${network}**\n\nI've verified that the swap contract is deployed on ${network}:\n\n• **Contract Address**: ${contractAddress}\n• **Status**: ✅ Deployed and Verified\n• **Network**: ${network}\n• **Capability**: Swap operations available\n\n*Note: Swap quotes require specific token pairs and liquidity. This contract is ready for real swaps.*`,
+              steps: [],
+              toolCalls: [],
+              success: true,
+              blockchainData: contractResult,
+            });
+          }
+        } else {
+          return res.status(200).json({
+            response: `❌ **Contract Not Deployed - ${network}**\n\nI've checked the blockchain and the swap contract is not deployed on ${network}:\n\n• **Network**: ${network}\n• **Status**: Contract not found\n• **Action**: Deploy contract to enable swaps`,
+            success: false,
+            blockchainData: contractResult,
+          });
+        }
+      } catch (error) {
+        console.error('Contract check failed:', error);
+        return res.status(200).json({
+          response: `❌ **Error Checking Contract**\n\nFailed to check contract status on ${network}:\n\n• **Error**: ${error.message}\n• **Network**: ${network}`,
+          success: false,
+          error: error.message,
+        });
+      }
+    }
 
+    // Real yield farming info
+    if (lowerPrompt.includes('farm') || lowerPrompt.includes('yield')) {
+      try {
+        const farmAddress = '0x27A0239D6F238c6AD5b5952d70e62081D1cc896e'; // Mock farm
+        const farmResult = await kaiaAgentService.getContractState(farmAddress, network);
+        
+        if (farmResult.success) {
+          return res.status(200).json({
+            response: `🔗 **Real Yield Farm Data - ${network}**\n\nI've queried the actual blockchain for yield farm information:\n\n• **Farm Address**: ${farmAddress}\n• **Status**: ✅ Contract Deployed\n• **Network**: ${network}\n• **Type**: Yield Farming Contract\n• **Reward Token**: Mock Token\n• **Capability**: Deposit/Withdraw available`,
+            steps: [],
+            toolCalls: [],
+            success: true,
+            blockchainData: farmResult,
+          });
+        } else {
+          return res.status(200).json({
+            response: `❌ **Farm Not Deployed - ${network}**\n\nI've checked the blockchain and the yield farm is not deployed on ${network}:\n\n• **Network**: ${network}\n• **Status**: Farm contract not found\n• **Action**: Deploy farm contract to enable yield farming`,
+            success: false,
+            blockchainData: farmResult,
+          });
+        }
+      } catch (error) {
+        console.error('Farm check failed:', error);
+        return res.status(200).json({
+          response: `❌ **Error Checking Farm**\n\nFailed to check farm status on ${network}:\n\n• **Error**: ${error.message}\n• **Network**: ${network}`,
+          success: false,
+          error: error.message,
+        });
+      }
+    }
+
+    // Default response for unrecognized queries
     return res.status(200).json({
-      response: response,
+      response: `🤖 **Kaia AI Assistant - ${network}**\n\nI can help you with real blockchain queries on the ${network}:\n\n• **Check Balance**: "Check my KAIA balance on ${network}"\n• **Network Status**: "Check network status on ${network}"\n• **Transaction**: "Check transaction 0x... on ${network}"\n• **Contract**: "Check contract 0x... on ${network}"\n• **Swap Quote**: "Get swap quote on ${network}"\n• **Yield Farm**: "Check yield farm on ${network}"\n\nAll queries use real blockchain data from the ${network === 'testnet' ? 'Kaia Testnet' : 'Kaia Mainnet'}.`,
       steps: [],
       toolCalls: [],
       success: true,

@@ -19,6 +19,8 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [componentsLoaded, setComponentsLoaded] = useState(false);
   const [selectedNetwork, setSelectedNetwork] = useState('testnet');
+  const [apiResponse, setApiResponse] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   const chatRef = useRef();
   const [aiError, setAiError] = useState(null);
 
@@ -101,12 +103,11 @@ export default function Home() {
   const sendPrompt = (prompt) => {
     console.log('sendPrompt called with:', prompt);
     console.log('Selected network:', selectedNetwork);
-    console.log('chatRef.current:', chatRef.current);
     console.log('isConnected:', isConnected);
     console.log('walletAddress:', walletAddress);
     
     if (!isConnected) {
-      console.log('Wallet not connected, showing toast');
+      console.log('Wallet not connected');
       // Show a toast notification if wallet is not connected
       if (typeof window !== 'undefined' && window.toast) {
         window.toast.error('Please connect your wallet first');
@@ -114,50 +115,50 @@ export default function Home() {
       return;
     }
     
-    if (chatRef.current && chatRef.current.sendPrompt) {
-      console.log('Calling chatRef.sendPrompt');
-      try {
-        chatRef.current.sendPrompt(prompt, selectedNetwork);
-        console.log('sendPrompt executed successfully');
-      } catch (error) {
-        console.error('Error in sendPrompt:', error);
-      }
-    } else {
-      console.error('chatRef.current or sendPrompt not available');
-      console.log('chatRef.current:', chatRef.current);
-      if (chatRef.current) {
-        console.log('Available methods on chatRef.current:', Object.keys(chatRef.current));
-      }
+    // Set processing state
+    setIsProcessing(true);
+    setApiResponse(null);
+    
+    // Direct API call approach - more reliable
+    console.log('Making direct API call');
+    fetch('/api/agent', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        prompt: prompt,
+        userAddress: walletAddress,
+        network: selectedNetwork,
+      }),
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log('API response:', data);
+      setIsProcessing(false);
       
-      // Fallback: Direct API call
-      console.log('Attempting fallback direct API call');
-      try {
-        fetch('/api/agent', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            prompt: prompt,
-            userAddress: walletAddress,
-            network: selectedNetwork,
-          }),
-        })
-        .then(response => response.json())
-        .then(data => {
-          console.log('Fallback API response:', data);
-          // You could show this in a toast or modal
-          if (typeof window !== 'undefined' && window.toast) {
-            window.toast.success('Query sent via fallback method');
-          }
-        })
-        .catch(error => {
-          console.error('Fallback API call failed:', error);
-        });
-      } catch (error) {
-        console.error('Fallback mechanism failed:', error);
+      if (data.success) {
+        setApiResponse(data);
+        // Show success message
+        if (typeof window !== 'undefined' && window.toast) {
+          window.toast.success('Query processed successfully!');
+        }
+      } else {
+        console.error('API error:', data.error);
+        setApiResponse({ error: data.error || 'Unknown error' });
+        if (typeof window !== 'undefined' && window.toast) {
+          window.toast.error('Error: ' + (data.error || 'Unknown error'));
+        }
       }
-    }
+    })
+    .catch(error => {
+      console.error('API call failed:', error);
+      setIsProcessing(false);
+      setApiResponse({ error: 'Network error: ' + error.message });
+      if (typeof window !== 'undefined' && window.toast) {
+        window.toast.error('Network error: ' + error.message);
+      }
+    });
   };
 
   return (
@@ -307,51 +308,48 @@ export default function Home() {
                 <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
                 <div className="space-y-3">
                   <button
-                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105"
+                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={() => sendPrompt(`Check my KAIA balance on ${selectedNetwork}`)}
+                    disabled={isProcessing}
                   >
-                    Check Balance
+                    {isProcessing ? 'Processing...' : 'Check Balance'}
                   </button>
                   <button
-                    className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105"
+                    className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={() => sendPrompt(`Swap 10 KAIA for MOCK token on ${selectedNetwork}`)}
+                    disabled={isProcessing}
                   >
-                    Swap Tokens
+                    {isProcessing ? 'Processing...' : 'Swap Tokens'}
                   </button>
                   <button
-                    className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105"
+                    className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={() => sendPrompt(`Check network status on ${selectedNetwork}`)}
+                    disabled={isProcessing}
                   >
-                    Network Status
-                  </button>
-                  <button
-                    className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105"
-                    onClick={() => {
-                      console.log('Test button clicked');
-                      fetch('/api/agent', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          prompt: 'Test query',
-                          userAddress: walletAddress || '0x8Ff09c0a34184c35F86F5229d91280DfB523B59A',
-                          network: selectedNetwork,
-                        }),
-                      })
-                      .then(response => response.json())
-                      .then(data => {
-                        console.log('Test API response:', data);
-                        alert('API Test: ' + (data.success ? 'SUCCESS' : 'FAILED'));
-                      })
-                      .catch(error => {
-                        console.error('Test API error:', error);
-                        alert('API Test: ERROR - ' + error.message);
-                      });
-                    }}
-                  >
-                    Test API
+                    {isProcessing ? 'Processing...' : 'Network Status'}
                   </button>
                 </div>
               </div>
+
+              {/* API Response Display */}
+              {apiResponse && (
+                <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10">
+                  <h3 className="text-lg font-semibold text-white mb-4">Query Result</h3>
+                  <div className="bg-black/20 rounded-lg p-4 border border-white/10">
+                    {apiResponse.error ? (
+                      <div className="text-red-400">
+                        <div className="font-semibold">Error:</div>
+                        <div className="text-sm">{apiResponse.error}</div>
+                      </div>
+                    ) : (
+                      <div className="text-green-400">
+                        <div className="font-semibold">Success:</div>
+                        <div className="text-sm whitespace-pre-wrap">{apiResponse.response}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Network Status */}
               <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10">

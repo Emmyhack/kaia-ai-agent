@@ -44,10 +44,8 @@ const nextConfig = {
 
     return config;
   },
-  // Reduce build output
-  experimental: {
-    optimizeCss: true,
-  },
+  // Disable static export for Vercel
+  output: 'standalone',
   // Compress static assets
   compress: true,
   // Reduce image optimization

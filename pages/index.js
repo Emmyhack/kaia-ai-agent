@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
-import ChatInterface from '../components/ChatInterface';
-import WalletConnection from '../components/WalletConnection';
-import AgentStats from '../components/AgentStats';
+import dynamic from 'next/dynamic';
 import { Toaster } from 'react-hot-toast';
+
+// Dynamic imports to avoid SSR issues
+const ChatInterface = dynamic(() => import('../components/ChatInterface'), { ssr: false });
+const WalletConnection = dynamic(() => import('../components/WalletConnection'), { ssr: false });
+const AgentStats = dynamic(() => import('../components/AgentStats'), { ssr: false });
 
 export default function Home() {
   const [walletAddress, setWalletAddress] = useState('');

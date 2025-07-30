@@ -12,10 +12,13 @@ export default function Home() {
   const [walletAddress, setWalletAddress] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [balance, setBalance] = useState('0');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Check if wallet is already connected
     checkWalletConnection();
+    // Set loading to false after initial load
+    setIsLoading(false);
   }, []);
 
   const checkWalletConnection = async () => {
@@ -112,13 +115,19 @@ export default function Home() {
         )}
 
         {/* Main Chat Interface */}
-        <div className="max-w-4xl mx-auto">
-          <ChatInterface 
-            walletAddress={walletAddress}
-            isWalletConnected={isConnected}
-            onBalanceUpdate={updateBalance}
-          />
-        </div>
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="text-lg text-gray-600">Loading...</div>
+          </div>
+        ) : (
+          <div className="max-w-4xl mx-auto">
+            <ChatInterface 
+              walletAddress={walletAddress}
+              isWalletConnected={isConnected}
+              onBalanceUpdate={updateBalance}
+            />
+          </div>
+        )}
 
         {/* Features Section */}
         <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">

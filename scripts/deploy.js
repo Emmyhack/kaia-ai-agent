@@ -29,22 +29,24 @@ async function main() {
     SWAP_ROUTER_ADDRESS
   );
 
-  await kaiaAIAgent.deployed();
+  await kaiaAIAgent.waitForDeployment();
+  const contractAddress = await kaiaAIAgent.getAddress();
+  const deployTx = kaiaAIAgent.deploymentTransaction();
 
-  console.log("KaiaAIAgent deployed to:", kaiaAIAgent.address);
+  console.log("KaiaAIAgent deployed to:", contractAddress);
   console.log("Constructor arguments:");
   console.log("- KAIA Token Address:", KAIA_TOKEN_ADDRESS);
   console.log("- Swap Router Address:", SWAP_ROUTER_ADDRESS);
 
   // Save deployment info
   const deploymentInfo = {
-    contractAddress: kaiaAIAgent.address,
+    contractAddress: contractAddress,
     deployer: deployer.address,
     kaiaTokenAddress: KAIA_TOKEN_ADDRESS,
     swapRouterAddress: SWAP_ROUTER_ADDRESS,
     network: hre.network.name,
     deploymentTime: new Date().toISOString(),
-    transactionHash: kaiaAIAgent.deployTransaction.hash,
+    transactionHash: deployTx.hash,
   };
 
   console.log("\nDeployment Info:");

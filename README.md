@@ -12,7 +12,13 @@ An intelligent AI agent that enables natural language interaction with the Kaia 
 
 ## 🚀 Live Demo
 
-**Contract Address (Kaia Testnet)**: `0x554Ef03BA2A7CC0A539731CA6beF561fA2648c4E`
+### Main Contract
+**KaiaAIAgent Contract (Kaia Testnet)**: `0x554Ef03BA2A7CC0A539731CA6beF561fA2648c4E`
+
+### Mock Contracts (for Testing & Demonstration)
+- **MockERC20 Token**: `0x8C82fa4dc47a9bf5034Bb38815c843B75EF76690`
+- **MockSwapRouter**: `0x48B1F3EA22eC9a094C709a3710ce94B13d4408dE`
+- **MockYieldFarm**: `0x27A0239D6F238c6AD5b5952d70e62081D1cc896e`
 
 **Network**: Kaia Testnet (Chain ID: 1001)
 

@@ -3,10 +3,20 @@ const { ethers } = require("hardhat");
 async function main() {
   console.log("Deploying KaiaAIAgent contract...");
 
+  // Check if private key is available
+  if (!process.env.KAIA_PRIVATE_KEY) {
+    throw new Error("KAIA_PRIVATE_KEY environment variable is required");
+  }
+
   // Get the ContractFactory and Signers here.
   const [deployer] = await ethers.getSigners();
+  
+  if (!deployer) {
+    throw new Error("No deployer account found. Check your private key configuration.");
+  }
+  
   console.log("Deploying contracts with the account:", deployer.address);
-  console.log("Account balance:", (await deployer.getBalance()).toString());
+  console.log("Account balance:", (await ethers.provider.getBalance(deployer.address)).toString());
 
   // Contract constructor parameters
   const KAIA_TOKEN_ADDRESS = process.env.KAIA_TOKEN_ADDRESS || "0x0000000000000000000000000000000000000000"; // Replace with actual KAIA token address

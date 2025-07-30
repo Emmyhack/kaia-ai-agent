@@ -1,5 +1,4 @@
 import { ethers } from 'ethers';
-import { KaiaSDK } from '@kaia-sdk/ethers-ext';
 
 // Contract ABI - simplified for key functions
 const KAIA_AI_AGENT_ABI = [
@@ -33,9 +32,6 @@ class KaiaAgentService {
       // Initialize Kaia provider
       const rpcUrl = process.env.KAIA_RPC_URL || 'https://public-en-kairos.node.kaia.io';
       this.provider = new ethers.JsonRpcProvider(rpcUrl);
-      
-      // Initialize Kaia SDK
-      this.kaiaSDK = new KaiaSDK(this.provider);
       
       // Initialize signer if private key is available
       if (process.env.KAIA_PRIVATE_KEY) {

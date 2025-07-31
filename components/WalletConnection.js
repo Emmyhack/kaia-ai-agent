@@ -2,41 +2,52 @@ import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 
 const WALLET_PROVIDERS = [
-  { key: 'metamask', name: 'MetaMask', icon: '🦊', detect: () => typeof window !== 'undefined' && window.ethereum },
-  { key: 'kaia', name: 'Kaia Wallet', icon: '🪙', detect: () => typeof window !== 'undefined' && (window.kaia || window.kaiaWallet) },
+  { 
+    key: 'metamask', 
+    name: 'MetaMask', 
+    icon: '🦊', 
+    description: 'Popular Ethereum wallet',
+    detect: () => typeof window !== 'undefined' && window.ethereum && !window.ethereum.isKaiaWallet,
+    installUrl: 'https://metamask.io/download/'
+  },
+  { 
+    key: 'kaia', 
+    name: 'Kaia Wallet', 
+    icon: '🪙', 
+    description: 'Native Kaia blockchain wallet',
+    detect: () => typeof window !== 'undefined' && (window.kaia || window.kaiaWallet || (window.ethereum && window.ethereum.isKaiaWallet)),
+    installUrl: 'https://kaia.io/wallet'
+  },
 ];
 
 export default function WalletConnection({ isConnected, walletAddress, balance, onConnect, onDisconnect }) {
   const [isConnecting, setIsConnecting] = useState(false);
-  const [selectedProvider, setSelectedProvider] = useState(null);
+  const [showWalletModal, setShowWalletModal] = useState(false);
   const [availableProviders, setAvailableProviders] = useState([]);
 
   useEffect(() => {
     // Detect available wallet providers
     const detected = WALLET_PROVIDERS.filter(p => p.detect());
     setAvailableProviders(detected);
-    if (detected.length === 1) setSelectedProvider(detected[0].key);
   }, []);
 
-  const connectWallet = async () => {
-    if (!selectedProvider) {
-      toast.error('Please select a wallet provider.');
-      return;
-    }
+  const connectWallet = async (providerKey) => {
     setIsConnecting(true);
     try {
-      if (selectedProvider === 'metamask') {
-        if (!window.ethereum) {
-          toast.error('MetaMask is not installed.');
+      if (providerKey === 'metamask') {
+        if (!window.ethereum || window.ethereum.isKaiaWallet) {
+          toast.error('MetaMask is not installed. Please install MetaMask first.');
           setIsConnecting(false);
           return;
         }
-        // MetaMask logic (same as before)
+        
+        // MetaMask connection logic
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
         if (accounts.length > 0) {
           const account = accounts[0];
           const chainId = await window.ethereum.request({ method: 'eth_chainId' });
           const kaiaTestnetChainId = '0x3e9';
+          
           if (chainId !== kaiaTestnetChainId) {
             try {
               await window.ethereum.request({
@@ -69,20 +80,21 @@ export default function WalletConnection({ isConnected, walletAddress, balance, 
             }
           }
           onConnect(account);
-          toast.success('Wallet connected successfully!');
+          toast.success('MetaMask connected successfully!');
         }
-      } else if (selectedProvider === 'kaia') {
-        const kaiaProvider = window.kaia || window.kaiaWallet;
+      } else if (providerKey === 'kaia') {
+        // Kaia Wallet connection logic
+        const kaiaProvider = window.kaia || window.kaiaWallet || (window.ethereum && window.ethereum.isKaiaWallet ? window.ethereum : null);
+        
         if (!kaiaProvider) {
-          toast.error('Kaia Wallet extension is not installed.');
+          toast.error('Kaia Wallet is not installed. Please install Kaia Wallet first.');
           setIsConnecting(false);
           return;
         }
-        // Kaia Wallet logic
+        
         const accounts = await kaiaProvider.request({ method: 'eth_requestAccounts' });
         if (accounts.length > 0) {
           const account = accounts[0];
-          // Check if we're on the correct network (Kaia testnet)
           const chainId = await kaiaProvider.request({ method: 'eth_chainId' });
           const kaiaTestnetChainId = '0x3e9';
           
@@ -118,7 +130,7 @@ export default function WalletConnection({ isConnected, walletAddress, balance, 
             }
           }
           onConnect(account);
-          toast.success('Kaia Wallet connected!');
+          toast.success('Kaia Wallet connected successfully!');
         }
       }
     } catch (error) {
@@ -126,6 +138,7 @@ export default function WalletConnection({ isConnected, walletAddress, balance, 
       toast.error(`Failed to connect wallet: ${error.message}`);
     } finally {
       setIsConnecting(false);
+      setShowWalletModal(false);
     }
   };
 
@@ -144,6 +157,11 @@ export default function WalletConnection({ isConnected, walletAddress, balance, 
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
+  const installWallet = (provider) => {
+    window.open(provider.installUrl, '_blank');
+    toast.success(`Opening ${provider.name} download page`);
+  };
+
   useEffect(() => {
     if (typeof window !== 'undefined' && (window.ethereum || window.kaia)) {
       // Listen for account changes
@@ -156,12 +174,14 @@ export default function WalletConnection({ isConnected, walletAddress, balance, 
           toast.success('Account changed');
         }
       };
+      
       // Listen for chain changes
       const handleChainChanged = (chainId) => {
         if (chainId !== '0x3e9') {
           toast.error('Please switch to Kaia testnet');
         }
       };
+      
       if (window.ethereum) {
         window.ethereum.on('accountsChanged', handleAccountsChanged);
         window.ethereum.on('chainChanged', handleChainChanged);
@@ -171,6 +191,7 @@ export default function WalletConnection({ isConnected, walletAddress, balance, 
         kaiaProvider.on('accountsChanged', handleAccountsChanged);
         kaiaProvider.on('chainChanged', handleChainChanged);
       }
+      
       return () => {
         if (window.ethereum) {
           window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
@@ -196,38 +217,21 @@ export default function WalletConnection({ isConnected, walletAddress, balance, 
               </svg>
             </div>
             <h3 className="text-xl font-semibold text-white mb-2">Connect Your Wallet</h3>
-            <p className="text-gray-300 mb-6">Connect your MetaMask or Kaia Wallet to start using the AI Agent</p>
+            <p className="text-gray-300 mb-6">Choose your preferred wallet to start using the AI Agent</p>
           </div>
-          <div className="mb-4 flex justify-center gap-2">
-            {availableProviders.map((provider) => (
-              <button
-                key={provider.key}
-                onClick={() => setSelectedProvider(provider.key)}
-                className={`px-4 py-2 rounded-lg font-semibold border-2 transition-all duration-200 ${selectedProvider === provider.key ? 'border-purple-500 bg-purple-600 text-white' : 'border-white/20 bg-white/10 text-white hover:border-purple-400'}`}
-              >
-                <span className="mr-2">{provider.icon}</span>
-                {provider.name}
-              </button>
-            ))}
-          </div>
+          
           <button
-            onClick={connectWallet}
-            disabled={isConnecting || !selectedProvider}
-            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-8 py-4 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 flex items-center justify-center space-x-2 mx-auto"
+            onClick={() => setShowWalletModal(true)}
+            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-8 py-4 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 flex items-center justify-center space-x-2 mx-auto"
           >
-            {isConnecting ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                <span>Connecting...</span>
-              </>
-            ) : (
-              <>
-                <span>Connect Wallet</span>
-              </>
-            )}
+            <span>Choose Wallet</span>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
           </button>
+          
           <div className="mt-4 text-sm text-gray-400">
-            <p>Make sure you have MetaMask or Kaia Wallet installed and are on Kaia testnet</p>
+            <p>Make sure you're on Kaia testnet for the best experience</p>
           </div>
         </div>
       ) : (
@@ -265,6 +269,61 @@ export default function WalletConnection({ isConnected, walletAddress, balance, 
           >
             Disconnect Wallet
           </button>
+        </div>
+      )}
+
+      {/* Wallet Selection Modal */}
+      {showWalletModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold text-white">Choose Your Wallet</h3>
+              <button
+                onClick={() => setShowWalletModal(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="space-y-3">
+              {WALLET_PROVIDERS.map((provider) => {
+                const isAvailable = provider.detect();
+                return (
+                  <div key={provider.key} className="relative">
+                    <button
+                      onClick={() => isAvailable ? connectWallet(provider.key) : installWallet(provider)}
+                      disabled={isConnecting}
+                      className={`w-full p-4 rounded-xl border-2 transition-all duration-200 ${
+                        isAvailable 
+                          ? 'border-purple-500 bg-purple-500/20 hover:bg-purple-500/30 text-white' 
+                          : 'border-gray-500 bg-gray-500/20 text-gray-400 cursor-not-allowed'
+                      } ${isConnecting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <span className="text-2xl">{provider.icon}</span>
+                        <div className="flex-1 text-left">
+                          <div className="font-semibold">{provider.name}</div>
+                          <div className="text-sm opacity-75">{provider.description}</div>
+                        </div>
+                        {isAvailable ? (
+                          <div className="text-green-400 text-sm">✓ Available</div>
+                        ) : (
+                          <div className="text-gray-400 text-sm">Install</div>
+                        )}
+                      </div>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            
+            <div className="mt-6 text-sm text-gray-400 text-center">
+              <p>Don't have a wallet? Install one of the options above to get started.</p>
+            </div>
+          </div>
         </div>
       )}
     </div>

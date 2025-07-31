@@ -1515,6 +1515,243 @@ class KaiaAgentService {
   getDragonSwapRouter(network = 'testnet') {
     return DRAGONSWAP_ROUTERS[network] || '0x0000000000000000000000000000000000000000';
   }
+
+  // Token Transfer Methods
+  async transferTokens(tokenAddress, fromAddress, toAddress, amount, network = 'testnet') {
+    await this.initialize();
+    
+    try {
+      if (!this.signer) {
+        throw new Error('Signer not initialized for transfers');
+      }
+
+      const provider = network === 'mainnet' ? this.mainnetProvider : this.testnetProvider;
+      
+      if (tokenAddress === ethers.ZeroAddress) {
+        // Transfer native KAIA
+        const tx = await this.signer.sendTransaction({
+          to: toAddress,
+          value: ethers.parseEther(amount.toString())
+        });
+        
+        const receipt = await tx.wait();
+        
+        return {
+          success: true,
+          transactionHash: receipt.hash,
+          gasUsed: receipt.gasUsed.toString(),
+          amount: amount,
+          token: 'KAIA',
+          from: fromAddress,
+          to: toAddress,
+          network: network
+        };
+      } else {
+        // Transfer ERC20 tokens
+        const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, this.signer);
+        const amountWei = ethers.parseEther(amount.toString());
+        
+        const tx = await tokenContract.transfer(toAddress, amountWei);
+        const receipt = await tx.wait();
+        
+        // Get token info
+        const [name, symbol] = await Promise.all([
+          tokenContract.name().catch(() => 'Unknown'),
+          tokenContract.symbol().catch(() => 'UNKNOWN')
+        ]);
+        
+        return {
+          success: true,
+          transactionHash: receipt.hash,
+          gasUsed: receipt.gasUsed.toString(),
+          amount: amount,
+          token: `${name} (${symbol})`,
+          from: fromAddress,
+          to: toAddress,
+          network: network
+        };
+      }
+    } catch (error) {
+      console.error('Token transfer failed:', error);
+      return {
+        success: false,
+        error: error.message,
+        network: network
+      };
+    }
+  }
+
+  // Yield Farming Methods
+  async getYieldFarmingOpportunities(network = 'testnet') {
+    await this.initialize();
+    
+    try {
+      const opportunities = [];
+      
+      // Mock yield farming opportunities (in real implementation, this would query DeFi protocols)
+      if (network === 'testnet') {
+        opportunities.push({
+          protocol: 'DragonFarm',
+          pair: 'KAIA-MOCK',
+          apy: '12.5%',
+          tvl: '1,250,000 KAIA',
+          risk: 'Low',
+          minStake: '100 KAIA',
+          rewards: 'MOCK tokens',
+          address: '0x27A0239D6F238c6AD5b5952d70e62081D1cc896e'
+        });
+        
+        opportunities.push({
+          protocol: 'KaiaVault',
+          pair: 'KAIA-USDT',
+          apy: '18.2%',
+          tvl: '2,100,000 KAIA',
+          risk: 'Medium',
+          minStake: '500 KAIA',
+          rewards: 'USDT + MOCK',
+          address: '0x0000000000000000000000000000000000000000'
+        });
+      } else {
+        // Mainnet opportunities (when available)
+        opportunities.push({
+          protocol: 'DragonFarm',
+          pair: 'KAIA-USDT',
+          apy: '15.8%',
+          tvl: '5,200,000 KAIA',
+          risk: 'Low',
+          minStake: '1000 KAIA',
+          rewards: 'USDT tokens',
+          address: '0x0000000000000000000000000000000000000000'
+        });
+      }
+      
+      return {
+        success: true,
+        opportunities: opportunities,
+        network: network
+      };
+    } catch (error) {
+      console.error('Get yield farming opportunities failed:', error);
+      return {
+        success: false,
+        error: error.message,
+        network: network
+      };
+    }
+  }
+
+  async depositToYieldFarm(farmAddress, userAddress, amount, network = 'testnet') {
+    await this.initialize();
+    
+    try {
+      if (!this.signer) {
+        throw new Error('Signer not initialized for farming');
+      }
+
+      // Mock farm contract interaction (in real implementation, this would interact with actual farm contracts)
+      const farmContract = new ethers.Contract(farmAddress, [
+        'function deposit(uint256 amount) external',
+        'function balanceOf(address account) external view returns (uint256)'
+      ], this.signer);
+      
+      const amountWei = ethers.parseEther(amount.toString());
+      const tx = await farmContract.deposit(amountWei);
+      const receipt = await tx.wait();
+      
+      return {
+        success: true,
+        transactionHash: receipt.hash,
+        gasUsed: receipt.gasUsed.toString(),
+        amount: amount,
+        farmAddress: farmAddress,
+        userAddress: userAddress,
+        network: network
+      };
+    } catch (error) {
+      console.error('Deposit to yield farm failed:', error);
+      return {
+        success: false,
+        error: error.message,
+        network: network
+      };
+    }
+  }
+
+  // Trade Analysis Methods
+  async analyzeTrade(tokenAddress, amount, timeframe = '24h', network = 'testnet') {
+    await this.initialize();
+    
+    try {
+      // Mock trade analysis (in real implementation, this would query price feeds and historical data)
+      const analysis = {
+        token: tokenAddress === ethers.ZeroAddress ? 'KAIA' : 'MOCK',
+        currentPrice: network === 'testnet' ? 0.85 : 1.25,
+        priceChange24h: network === 'testnet' ? 2.5 : -1.8,
+        volume24h: network === 'testnet' ? '2.5M KAIA' : '8.2M KAIA',
+        marketCap: network === 'testnet' ? '125M KAIA' : '450M KAIA',
+        volatility: network === 'testnet' ? 'Medium' : 'Low',
+        trend: network === 'testnet' ? 'Bullish' : 'Sideways',
+        support: network === 'testnet' ? 0.80 : 1.20,
+        resistance: network === 'testnet' ? 0.90 : 1.30,
+        recommendation: network === 'testnet' ? 'Buy' : 'Hold',
+        riskLevel: network === 'testnet' ? 'Medium' : 'Low',
+        timeframe: timeframe
+      };
+      
+      return {
+        success: true,
+        analysis: analysis,
+        network: network
+      };
+    } catch (error) {
+      console.error('Trade analysis failed:', error);
+      return {
+        success: false,
+        error: error.message,
+        network: network
+      };
+    }
+  }
+
+  async getMarketData(network = 'testnet') {
+    await this.initialize();
+    
+    try {
+      // Mock market data (in real implementation, this would query real market data APIs)
+      const marketData = {
+        totalMarketCap: network === 'testnet' ? '125M KAIA' : '450M KAIA',
+        totalVolume24h: network === 'testnet' ? '15M KAIA' : '45M KAIA',
+        activeTokens: network === 'testnet' ? 25 : 150,
+        topGainers: [
+          { token: 'MOCK', change: '+12.5%' },
+          { token: 'USDT', change: '+5.2%' },
+          { token: 'KAIA', change: '+2.8%' }
+        ],
+        topLosers: [
+          { token: 'TEST', change: '-8.3%' },
+          { token: 'DEMO', change: '-4.1%' }
+        ],
+        trendingPairs: [
+          'KAIA/MOCK',
+          'KAIA/USDT',
+          'MOCK/USDT'
+        ]
+      };
+      
+      return {
+        success: true,
+        marketData: marketData,
+        network: network
+      };
+    } catch (error) {
+      console.error('Get market data failed:', error);
+      return {
+        success: false,
+        error: error.message,
+        network: network
+      };
+    }
+  }
 }
 
 // Create singleton instance

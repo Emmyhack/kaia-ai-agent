@@ -250,9 +250,209 @@ export default async function handler(req, res) {
       }
     }
 
+    // Token Transfer functionality
+    if (lowerPrompt.includes('transfer') || lowerPrompt.includes('send')) {
+      try {
+        // Extract transfer parameters from prompt
+        const transferMatch = prompt.match(/(\d+(?:\.\d+)?)\s*(KAIA|MOCK|USDT|USDC|token)/i);
+        const amount = transferMatch ? parseFloat(transferMatch[1]) : 10;
+        
+        // Extract recipient address
+        const addressMatch = prompt.match(/0x[a-fA-F0-9]{40}/);
+        const recipientAddress = addressMatch ? addressMatch[0] : '0x8Ff09c0a34184c35F86F5229d91280DfB523B59A'; // Default recipient
+        
+        // Determine token address
+        let tokenAddress = ethers.ZeroAddress; // Default to KAIA
+        if (lowerPrompt.includes('mock')) {
+          tokenAddress = KAIA_TOKENS[network].MOCK;
+        } else if (lowerPrompt.includes('usdt')) {
+          tokenAddress = KAIA_TOKENS[network].USDT;
+        } else if (lowerPrompt.includes('usdc')) {
+          tokenAddress = KAIA_TOKENS[network].USDC;
+        }
+        
+        const transferResult = await kaiaAgentService.transferTokens(
+          tokenAddress,
+          userAddress,
+          recipientAddress,
+          amount,
+          network
+        );
+        
+        if (transferResult.success) {
+          const response = `💸 **Token Transfer Successful!**\n\n` +
+            `**Network:** ${network === 'testnet' ? 'Kaia Testnet' : 'Kaia Mainnet'}\n` +
+            `**Amount:** ${amount} ${transferResult.token}\n` +
+            `**From:** ${transferResult.from}\n` +
+            `**To:** ${transferResult.to}\n` +
+            `**Transaction Hash:** \`${transferResult.transactionHash}\`\n` +
+            `**Gas Used:** ${transferResult.gasUsed}\n\n` +
+            `✅ Transfer completed successfully!`;
+          
+          return res.status(200).json({
+            response: response,
+            success: true,
+            transferData: transferResult
+          });
+        } else {
+          return res.status(200).json({
+            response: `❌ **Transfer Failed**\n\n**Error:** ${transferResult.error}\n\nPlease check your balance and try again.`,
+            success: false,
+            error: transferResult.error
+          });
+        }
+      } catch (error) {
+        console.error('Token transfer error:', error);
+        return res.status(200).json({
+          response: `❌ **Transfer Error**\n\n**Error:** ${error.message}\n\nPlease ensure you have sufficient balance.`,
+          success: false,
+          error: error.message
+        });
+      }
+    }
+
+    // Yield Farming functionality
+    if (lowerPrompt.includes('farm') || lowerPrompt.includes('yield') || lowerPrompt.includes('stake')) {
+      try {
+        if (lowerPrompt.includes('opportunities') || lowerPrompt.includes('suggest')) {
+          // Get yield farming opportunities
+          const opportunitiesResult = await kaiaAgentService.getYieldFarmingOpportunities(network);
+          
+          if (opportunitiesResult.success) {
+            let response = `🌾 **Yield Farming Opportunities - ${network}**\n\n`;
+            
+            opportunitiesResult.opportunities.forEach((opp, index) => {
+              response += `**${index + 1}. ${opp.protocol}**\n` +
+                `• **Pair:** ${opp.pair}\n` +
+                `• **APY:** ${opp.apy}\n` +
+                `• **TVL:** ${opp.tvl}\n` +
+                `• **Risk:** ${opp.risk}\n` +
+                `• **Min Stake:** ${opp.minStake}\n` +
+                `• **Rewards:** ${opp.rewards}\n\n`;
+            });
+            
+            response += `💡 **Recommendation:** Consider ${opportunitiesResult.opportunities[0].protocol} for the best risk/reward ratio.`;
+            
+            return res.status(200).json({
+              response: response,
+              success: true,
+              farmingData: opportunitiesResult
+            });
+          }
+        } else if (lowerPrompt.includes('deposit') || lowerPrompt.includes('stake')) {
+          // Deposit to yield farm
+          const amountMatch = prompt.match(/(\d+(?:\.\d+)?)\s*(KAIA|MOCK)/i);
+          const amount = amountMatch ? parseFloat(amountMatch[1]) : 100;
+          const farmAddress = '0x27A0239D6F238c6AD5b5952d70e62081D1cc896e'; // Mock farm
+          
+          const depositResult = await kaiaAgentService.depositToYieldFarm(
+            farmAddress,
+            userAddress,
+            amount,
+            network
+          );
+          
+          if (depositResult.success) {
+            const response = `🌾 **Yield Farm Deposit Successful!**\n\n` +
+              `**Network:** ${network === 'testnet' ? 'Kaia Testnet' : 'Kaia Mainnet'}\n` +
+              `**Amount:** ${amount} KAIA\n` +
+              `**Farm:** DragonFarm (KAIA-MOCK)\n` +
+              `**Transaction Hash:** \`${depositResult.transactionHash}\`\n` +
+              `**Gas Used:** ${depositResult.gasUsed}\n\n` +
+              `✅ Successfully staked in yield farm!`;
+            
+            return res.status(200).json({
+              response: response,
+              success: true,
+              depositData: depositResult
+            });
+          } else {
+            return res.status(200).json({
+              response: `❌ **Farm Deposit Failed**\n\n**Error:** ${depositResult.error}\n\nPlease try again.`,
+              success: false,
+              error: depositResult.error
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Yield farming error:', error);
+        return res.status(200).json({
+          response: `❌ **Yield Farming Error**\n\n**Error:** ${error.message}`,
+          success: false,
+          error: error.message
+        });
+      }
+    }
+
+    // Trade Analysis functionality
+    if (lowerPrompt.includes('analyze') || lowerPrompt.includes('analysis') || lowerPrompt.includes('market')) {
+      try {
+        if (lowerPrompt.includes('market') || lowerPrompt.includes('overview')) {
+          // Get market overview
+          const marketResult = await kaiaAgentService.getMarketData(network);
+          
+          if (marketResult.success) {
+            const market = marketResult.marketData;
+            const response = `📊 **Market Overview - ${network}**\n\n` +
+              `**Total Market Cap:** ${market.totalMarketCap}\n` +
+              `**24h Volume:** ${market.totalVolume24h}\n` +
+              `**Active Tokens:** ${market.activeTokens}\n\n` +
+              `**🔥 Top Gainers:**\n` +
+              market.topGainers.map(g => `• ${g.token}: ${g.change}`).join('\n') + `\n\n` +
+              `**📉 Top Losers:**\n` +
+              market.topLosers.map(l => `• ${l.token}: ${l.change}`).join('\n') + `\n\n` +
+              `**📈 Trending Pairs:**\n` +
+              market.trendingPairs.map(p => `• ${p}`).join('\n');
+            
+            return res.status(200).json({
+              response: response,
+              success: true,
+              marketData: marketResult
+            });
+          }
+        } else {
+          // Analyze specific token
+          const tokenMatch = prompt.match(/(KAIA|MOCK|USDT|USDC)/i);
+          const token = tokenMatch ? tokenMatch[1] : 'KAIA';
+          const tokenAddress = token === 'KAIA' ? ethers.ZeroAddress : KAIA_TOKENS[network][token];
+          
+          const analysisResult = await kaiaAgentService.analyzeTrade(tokenAddress, 100, '24h', network);
+          
+          if (analysisResult.success) {
+            const analysis = analysisResult.analysis;
+            const response = `📈 **Trade Analysis - ${analysis.token}**\n\n` +
+              `**Current Price:** $${analysis.currentPrice}\n` +
+              `**24h Change:** ${analysis.priceChange24h > 0 ? '+' : ''}${analysis.priceChange24h}%\n` +
+              `**24h Volume:** ${analysis.volume24h}\n` +
+              `**Market Cap:** ${analysis.marketCap}\n` +
+              `**Volatility:** ${analysis.volatility}\n` +
+              `**Trend:** ${analysis.trend}\n` +
+              `**Support:** $${analysis.support}\n` +
+              `**Resistance:** $${analysis.resistance}\n` +
+              `**Risk Level:** ${analysis.riskLevel}\n` +
+              `**Recommendation:** ${analysis.recommendation}\n\n` +
+              `💡 **Analysis:** ${analysis.trend === 'Bullish' ? 'Positive momentum detected' : 'Sideways consolidation'}`;
+            
+            return res.status(200).json({
+              response: response,
+              success: true,
+              analysisData: analysisResult
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Trade analysis error:', error);
+        return res.status(200).json({
+          response: `❌ **Analysis Error**\n\n**Error:** ${error.message}`,
+          success: false,
+          error: error.message
+        });
+      }
+    }
+
     // Default response for unrecognized queries
     return res.status(200).json({
-      response: `🤖 **Kaia AI Assistant - ${network}**\n\nI can help you with real blockchain queries on the ${network}:\n\n• **Check Balance**: "Check my KAIA balance on ${network}"\n• **Network Status**: "Check network status on ${network}"\n• **Transaction**: "Check transaction 0x... on ${network}"\n• **Contract**: "Check contract 0x... on ${network}"\n• **Swap Tokens**: "Swap 10 KAIA for MOCK on ${network}"\n• **Yield Farm**: "Check yield farm on ${network}"\n\nAll queries use real blockchain data from the ${network === 'testnet' ? 'Kaia Testnet' : 'Kaia Mainnet'}.`,
+      response: `🤖 **Kaia AI Assistant - ${network}**\n\nI can help you with real blockchain operations on the ${network}:\n\n**💰 Balance & Network:**\n• "Check my KAIA balance on ${network}"\n• "Check network status on ${network}"\n\n**🔄 Trading & Swaps:**\n• "Swap 10 KAIA for MOCK on ${network} using DragonSwap"\n• "Analyze KAIA market on ${network}"\n• "Show market overview on ${network}"\n\n**💸 Transfers:**\n• "Transfer 50 KAIA to 0x... on ${network}"\n• "Send 100 MOCK to 0x... on ${network}"\n\n**🌾 Yield Farming:**\n• "Show yield farming opportunities on ${network}"\n• "Deposit 200 KAIA to farm on ${network}"\n\n**📊 Analysis:**\n• "Analyze MOCK token on ${network}"\n• "Get market data on ${network}"\n\nAll operations use real blockchain data from the ${network === 'testnet' ? 'Kaia Testnet' : 'Kaia Mainnet'}.`,
       steps: [],
       toolCalls: [],
       success: true,

@@ -328,6 +328,27 @@ export default function Home() {
                   >
                     {isProcessing ? 'Processing...' : 'Network Status'}
                   </button>
+                  <button
+                    className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => sendPrompt(`Transfer 50 KAIA to 0x8Ff09c0a34184c35F86F5229d91280DfB523B59A on ${selectedNetwork}`)}
+                    disabled={isProcessing}
+                  >
+                    {isProcessing ? 'Processing...' : 'Transfer Tokens'}
+                  </button>
+                  <button
+                    className="w-full bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => sendPrompt(`Show yield farming opportunities on ${selectedNetwork}`)}
+                    disabled={isProcessing}
+                  >
+                    {isProcessing ? 'Processing...' : 'Yield Farming'}
+                  </button>
+                  <button
+                    className="w-full bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => sendPrompt(`Analyze KAIA market on ${selectedNetwork}`)}
+                    disabled={isProcessing}
+                  >
+                    {isProcessing ? 'Processing...' : 'Trade Analysis'}
+                  </button>
                 </div>
               </div>
 

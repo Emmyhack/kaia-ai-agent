@@ -161,6 +161,193 @@ export default function Home() {
     });
   };
 
+  // Network switching function
+  const switchNetwork = async (targetNetwork) => {
+    if (!isConnected) {
+      setSelectedNetwork(targetNetwork);
+      return;
+    }
+
+    try {
+      const targetChainId = targetNetwork === 'testnet' ? '0x3e9' : '0x2019'; // 1001 for testnet, 8217 for mainnet
+      const targetNetworkName = targetNetwork === 'testnet' ? 'Kaia Testnet' : 'Kaia Mainnet';
+      const targetRpcUrl = targetNetwork === 'testnet' 
+        ? 'https://public-en-kairos.node.kaia.io' 
+        : 'https://public-en.node.kaia.io';
+      const targetExplorerUrl = 'https://kaiascope.com';
+
+      // Try to switch network in the connected wallet
+      if (window.ethereum) {
+        try {
+          // First try to switch to the target network
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: targetChainId }],
+          });
+          
+          setSelectedNetwork(targetNetwork);
+          toast.success(`Switched to ${targetNetworkName}`);
+        } catch (switchError) {
+          if (switchError.code === 4902) {
+            // Network not added, add it
+            try {
+              await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [{
+                  chainId: targetChainId,
+                  chainName: targetNetworkName,
+                  nativeCurrency: { 
+                    name: 'KAIA', 
+                    symbol: 'KAIA', 
+                    decimals: 18 
+                  },
+                  rpcUrls: [targetRpcUrl],
+                  blockExplorerUrls: [targetExplorerUrl],
+                }],
+              });
+              
+              setSelectedNetwork(targetNetwork);
+              toast.success(`Added and switched to ${targetNetworkName}`);
+            } catch (addError) {
+              console.error('Failed to add network:', addError);
+              toast.error(`Failed to add ${targetNetworkName}. Please add it manually.`);
+              // Still update the UI even if wallet network switch fails
+              setSelectedNetwork(targetNetwork);
+            }
+          } else {
+            console.error('Failed to switch network:', switchError);
+            toast.error(`Failed to switch to ${targetNetworkName}. Please switch manually.`);
+            // Still update the UI even if wallet network switch fails
+            setSelectedNetwork(targetNetwork);
+          }
+        }
+      } else if (window.kaia || window.kaiaWallet) {
+        // Handle Kaia Wallet network switching
+        const kaiaProvider = window.kaia || window.kaiaWallet;
+        try {
+          await kaiaProvider.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: targetChainId }],
+          });
+          
+          setSelectedNetwork(targetNetwork);
+          toast.success(`Switched to ${targetNetworkName}`);
+        } catch (switchError) {
+          if (switchError.code === 4902) {
+            try {
+              await kaiaProvider.request({
+                method: 'wallet_addEthereumChain',
+                params: [{
+                  chainId: targetChainId,
+                  chainName: targetNetworkName,
+                  nativeCurrency: { 
+                    name: 'KAIA', 
+                    symbol: 'KAIA', 
+                    decimals: 18 
+                  },
+                  rpcUrls: [targetRpcUrl],
+                  blockExplorerUrls: [targetExplorerUrl],
+                }],
+              });
+              
+              setSelectedNetwork(targetNetwork);
+              toast.success(`Added and switched to ${targetNetworkName}`);
+            } catch (addError) {
+              console.error('Failed to add network to Kaia Wallet:', addError);
+              toast.error(`Failed to add ${targetNetworkName} to Kaia Wallet. Please add it manually.`);
+              setSelectedNetwork(targetNetwork);
+            }
+          } else {
+            console.error('Failed to switch network in Kaia Wallet:', switchError);
+            toast.error(`Failed to switch to ${targetNetworkName} in Kaia Wallet. Please switch manually.`);
+            setSelectedNetwork(targetNetwork);
+          }
+        }
+      } else {
+        // No wallet connected, just update the UI
+        setSelectedNetwork(targetNetwork);
+        toast.success(`Selected ${targetNetworkName}`);
+      }
+    } catch (error) {
+      console.error('Network switching error:', error);
+      toast.error('Failed to switch network. Please try again.');
+    }
+  };
+
+  // Check current wallet network and sync with selected network
+  const checkAndSyncNetwork = async () => {
+    if (!isConnected) return;
+
+    try {
+      let currentChainId;
+      if (window.ethereum) {
+        currentChainId = await window.ethereum.request({ method: 'eth_chainId' });
+      } else if (window.kaia || window.kaiaWallet) {
+        const kaiaProvider = window.kaia || window.kaiaWallet;
+        currentChainId = await kaiaProvider.request({ method: 'eth_chainId' });
+      } else {
+        return;
+      }
+
+      // Map chain IDs to networks
+      const chainIdToNetwork = {
+        '0x3e9': 'testnet',    // 1001
+        '0x2019': 'mainnet'    // 8217
+      };
+
+      const currentNetwork = chainIdToNetwork[currentChainId];
+      if (currentNetwork && currentNetwork !== selectedNetwork) {
+        setSelectedNetwork(currentNetwork);
+        toast.success(`Synced with wallet network: ${currentNetwork === 'testnet' ? 'Kaia Testnet' : 'Kaia Mainnet'}`);
+      }
+    } catch (error) {
+      console.error('Failed to check wallet network:', error);
+    }
+  };
+
+  // Listen for network changes
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window.ethereum || window.kaia || window.kaiaWallet)) {
+      const handleChainChanged = (chainId) => {
+        const chainIdToNetwork = {
+          '0x3e9': 'testnet',    // 1001
+          '0x2019': 'mainnet'    // 8217
+        };
+        
+        const newNetwork = chainIdToNetwork[chainId];
+        if (newNetwork && newNetwork !== selectedNetwork) {
+          setSelectedNetwork(newNetwork);
+          toast.success(`Wallet switched to ${newNetwork === 'testnet' ? 'Kaia Testnet' : 'Kaia Mainnet'}`);
+        }
+      };
+
+      if (window.ethereum) {
+        window.ethereum.on('chainChanged', handleChainChanged);
+      }
+      if (window.kaia || window.kaiaWallet) {
+        const kaiaProvider = window.kaia || window.kaiaWallet;
+        kaiaProvider.on('chainChanged', handleChainChanged);
+      }
+
+      return () => {
+        if (window.ethereum) {
+          window.ethereum.removeListener('chainChanged', handleChainChanged);
+        }
+        if (window.kaia || window.kaiaWallet) {
+          const kaiaProvider = window.kaia || window.kaiaWallet;
+          kaiaProvider.removeListener('chainChanged', handleChainChanged);
+        }
+      };
+    }
+  }, [selectedNetwork]);
+
+  // Check network when wallet connects
+  useEffect(() => {
+    if (isConnected) {
+      checkAndSyncNetwork();
+    }
+  }, [isConnected]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
               <Head>
@@ -228,7 +415,7 @@ export default function Home() {
             <h3 className="text-lg font-semibold text-white mb-3">Select Network</h3>
             <div className="flex space-x-3">
               <button
-                onClick={() => setSelectedNetwork('testnet')}
+                onClick={() => switchNetwork('testnet')}
                 className={`flex-1 px-4 py-2 rounded-lg transition-all duration-200 ${
                   selectedNetwork === 'testnet'
                     ? 'bg-blue-500 text-white'
@@ -238,7 +425,7 @@ export default function Home() {
                 🧪 Testnet
               </button>
               <button
-                onClick={() => setSelectedNetwork('mainnet')}
+                onClick={() => switchNetwork('mainnet')}
                 className={`flex-1 px-4 py-2 rounded-lg transition-all duration-200 ${
                   selectedNetwork === 'mainnet'
                     ? 'bg-green-500 text-white'
@@ -385,7 +572,9 @@ export default function Home() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-gray-300">Network</span>
-                    <span className="text-green-400 font-semibold">Kaia Testnet</span>
+                    <span className={`font-semibold ${selectedNetwork === 'testnet' ? 'text-blue-400' : 'text-green-400'}`}>
+                      {selectedNetwork === 'testnet' ? 'Kaia Testnet' : 'Kaia Mainnet'}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-gray-300">Status</span>
@@ -393,6 +582,20 @@ export default function Home() {
                       <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                       <span className="text-green-400 text-sm">Connected</span>
                     </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-300">Chain ID</span>
+                    <span className="text-gray-300 text-sm font-mono">
+                      {selectedNetwork === 'testnet' ? '1001 (0x3e9)' : '8217 (0x2019)'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-300">RPC URL</span>
+                    <span className="text-gray-300 text-xs font-mono truncate max-w-32">
+                      {selectedNetwork === 'testnet' 
+                        ? 'public-en-kairos.node.kaia.io' 
+                        : 'public-en.node.kaia.io'}
+                    </span>
                   </div>
                 </div>
               </div>

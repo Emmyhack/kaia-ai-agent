@@ -1,4 +1,20 @@
 import kaiaAgentService from '../../utils/kaiaAgent.js';
+import { ethers } from 'ethers';
+
+// Import token addresses from kaiaAgent
+const KAIA_TOKENS = {
+  testnet: {
+    WKAIA: '0x0000000000000000000000000000000000000000',
+    USDT: '0x0000000000000000000000000000000000000000',
+    USDC: '0x0000000000000000000000000000000000000000',
+    MOCK: '0x8C82fa4dc47a9bf5034Bb38815c843B75EF76690',
+  },
+  mainnet: {
+    WKAIA: '0x0000000000000000000000000000000000000000',
+    USDT: '0x0000000000000000000000000000000000000000',
+    USDC: '0x0000000000000000000000000000000000000000',
+  }
+};
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -114,55 +130,91 @@ export default async function handler(req, res) {
       }
     }
 
-    // Real swap quote (if contract is deployed)
-    if ((lowerPrompt.includes('swap') && lowerPrompt.includes('quote')) || lowerPrompt.includes('swap quote')) {
+    // Enhanced swap detection with DragonSwap support
+    if (prompt.toLowerCase().includes('swap') || prompt.toLowerCase().includes('exchange')) {
       try {
-        // Check if our contract is deployed on the selected network
-        const contractAddress = network === 'testnet' ? '0x554Ef03BA2A7CC0A539731CA6beF561fA2648c4E' : '0x0000000000000000000000000000000000000000';
-        const contractResult = await kaiaAgentService.getContractState(contractAddress, network);
+        // Extract swap parameters from prompt
+        const swapMatch = prompt.match(/(\d+(?:\.\d+)?)\s*(KAIA|ETH|MOCK|USDT|USDC|token)/i);
+        const amount = swapMatch ? parseFloat(swapMatch[1]) : 10;
         
-        if (contractResult.success) {
-          // Try to get real swap quote
-          try {
-            const quoteResult = await kaiaAgentService.getSwapQuote(
-              '0x0000000000000000000000000000000000000000', // KAIA
-              '0x8C82fa4dc47a9bf5034Bb38815c843B75EF76690', // Mock token
-              10, // 10 KAIA
-              network
-            );
-            
-            if (quoteResult.success) {
-              return res.status(200).json({
-                response: `🔗 **Real Swap Quote - ${network}**\n\nI've queried the actual smart contract for a swap quote:\n\n• **Token In**: KAIA (Native)\n• **Token Out**: Mock Token\n• **Amount In**: 10 KAIA\n• **Amount Out**: ${quoteResult.amountOut} tokens\n• **Fee**: ${quoteResult.feeAmount} KAIA\n• **Contract**: ${contractAddress}\n• **Network**: ${network}`,
-                steps: [],
-                toolCalls: [],
-                success: true,
-                blockchainData: quoteResult,
-              });
-            }
-          } catch (quoteError) {
-            console.log('Real swap quote failed, using contract info:', quoteError.message);
-            return res.status(200).json({
-              response: `🔗 **Contract Available - ${network}**\n\nI've verified that the swap contract is deployed on ${network}:\n\n• **Contract Address**: ${contractAddress}\n• **Status**: ✅ Deployed and Verified\n• **Network**: ${network}\n• **Capability**: Swap operations available\n\n*Note: Swap quotes require specific token pairs and liquidity. This contract is ready for real swaps.*`,
-              steps: [],
-              toolCalls: [],
-              success: true,
-              blockchainData: contractResult,
-            });
-          }
+        // Determine token addresses based on prompt
+        let tokenIn, tokenOut;
+        const lowerPrompt = prompt.toLowerCase();
+        
+        if (lowerPrompt.includes('kaia') && lowerPrompt.includes('mock')) {
+          tokenIn = ethers.ZeroAddress; // KAIA
+          tokenOut = KAIA_TOKENS[network].MOCK; // Mock token
+        } else if (lowerPrompt.includes('mock') && lowerPrompt.includes('kaia')) {
+          tokenIn = KAIA_TOKENS[network].MOCK; // Mock token
+          tokenOut = ethers.ZeroAddress; // KAIA
+        } else if (lowerPrompt.includes('kaia') && lowerPrompt.includes('usdt')) {
+          tokenIn = ethers.ZeroAddress; // KAIA
+          tokenOut = KAIA_TOKENS[network].USDT; // USDT
+        } else if (lowerPrompt.includes('usdt') && lowerPrompt.includes('kaia')) {
+          tokenIn = KAIA_TOKENS[network].USDT; // USDT
+          tokenOut = ethers.ZeroAddress; // KAIA
+        } else {
+          // Default: KAIA to Mock
+          tokenIn = ethers.ZeroAddress;
+          tokenOut = KAIA_TOKENS[network].MOCK;
+        }
+        
+        // Check if tokens are available
+        if (tokenIn !== ethers.ZeroAddress && tokenIn === '0x0000000000000000000000000000000000000000') {
+          return res.status(200).json({
+            response: `❌ **Token Not Available**\n\n**Error:** Input token is not available on ${network}\n\nAvailable tokens: KAIA (native), MOCK`,
+            success: false,
+            error: 'Token not available'
+          });
+        }
+        
+        if (tokenOut !== ethers.ZeroAddress && tokenOut === '0x0000000000000000000000000000000000000000') {
+          return res.status(200).json({
+            response: `❌ **Token Not Available**\n\n**Error:** Output token is not available on ${network}\n\nAvailable tokens: KAIA (native), MOCK`,
+            success: false,
+            error: 'Token not available'
+          });
+        }
+        
+        // Use DragonSwap for real swaps
+        const swapResult = await kaiaAgentService.swapTokensWithDragonSwap(
+          amount,
+          tokenIn,
+          tokenOut,
+          userAddress,
+          network
+        );
+        
+        if (swapResult.success) {
+          const tokenInSymbol = tokenIn === ethers.ZeroAddress ? 'KAIA' : 'MOCK';
+          const tokenOutSymbol = tokenOut === ethers.ZeroAddress ? 'KAIA' : 'MOCK';
+          
+          const response = `🔄 **DragonSwap Transaction Successful!**\n\n` +
+            `**Network:** ${network === 'testnet' ? 'Kaia Testnet' : 'Kaia Mainnet'}\n` +
+            `**Amount In:** ${amount} ${tokenInSymbol}\n` +
+            `**Amount Out:** ${swapResult.quote.amountOut} ${tokenOutSymbol}\n` +
+            `**Transaction Hash:** \`${swapResult.swap.transactionHash}\`\n` +
+            `**Gas Used:** ${swapResult.swap.gasUsed}\n\n` +
+            `✅ Swap executed successfully using DragonSwap!`;
+          
+          return res.status(200).json({
+            response: response,
+            success: true,
+            swapData: swapResult
+          });
         } else {
           return res.status(200).json({
-            response: `❌ **Contract Not Deployed - ${network}**\n\nI've checked the blockchain and the swap contract is not deployed on ${network}:\n\n• **Network**: ${network}\n• **Status**: Contract not found\n• **Action**: Deploy contract to enable swaps`,
+            response: `❌ **DragonSwap Swap Failed**\n\n**Error:** ${swapResult.error}\n\nPlease try again or check your token balance and allowances.`,
             success: false,
-            blockchainData: contractResult,
+            error: swapResult.error
           });
         }
       } catch (error) {
-        console.error('Contract check failed:', error);
+        console.error('DragonSwap swap error:', error);
         return res.status(200).json({
-          response: `❌ **Error Checking Contract**\n\nFailed to check contract status on ${network}:\n\n• **Error**: ${error.message}\n• **Network**: ${network}`,
+          response: `❌ **Swap Error**\n\n**Error:** ${error.message}\n\nPlease ensure you have sufficient balance and try again.`,
           success: false,
-          error: error.message,
+          error: error.message
         });
       }
     }
@@ -200,7 +252,7 @@ export default async function handler(req, res) {
 
     // Default response for unrecognized queries
     return res.status(200).json({
-      response: `🤖 **Kaia AI Assistant - ${network}**\n\nI can help you with real blockchain queries on the ${network}:\n\n• **Check Balance**: "Check my KAIA balance on ${network}"\n• **Network Status**: "Check network status on ${network}"\n• **Transaction**: "Check transaction 0x... on ${network}"\n• **Contract**: "Check contract 0x... on ${network}"\n• **Swap Quote**: "Get swap quote on ${network}"\n• **Yield Farm**: "Check yield farm on ${network}"\n\nAll queries use real blockchain data from the ${network === 'testnet' ? 'Kaia Testnet' : 'Kaia Mainnet'}.`,
+      response: `🤖 **Kaia AI Assistant - ${network}**\n\nI can help you with real blockchain queries on the ${network}:\n\n• **Check Balance**: "Check my KAIA balance on ${network}"\n• **Network Status**: "Check network status on ${network}"\n• **Transaction**: "Check transaction 0x... on ${network}"\n• **Contract**: "Check contract 0x... on ${network}"\n• **Swap Tokens**: "Swap 10 KAIA for MOCK on ${network}"\n• **Yield Farm**: "Check yield farm on ${network}"\n\nAll queries use real blockchain data from the ${network === 'testnet' ? 'Kaia Testnet' : 'Kaia Mainnet'}.`,
       steps: [],
       toolCalls: [],
       success: true,

@@ -319,7 +319,7 @@ export default function Home() {
                     onClick={() => sendPrompt(`Swap 10 KAIA for MOCK token on ${selectedNetwork} using DragonSwap`)}
                     disabled={isProcessing}
                   >
-                    {isProcessing ? 'Processing...' : 'Swap with DragonSwap'}
+                    {isProcessing ? 'Processing...' : `Swap with DragonSwap${selectedNetwork === 'testnet' ? ' (Demo)' : ''}`}
                   </button>
                   <button
                     className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -355,7 +355,14 @@ export default function Home() {
               {/* API Response Display */}
               {apiResponse && (
                 <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10">
-                  <h3 className="text-lg font-semibold text-white mb-4">Query Result</h3>
+                  <h3 className="text-lg font-semibold text-white mb-4">
+                    Query Result
+                    {apiResponse.isMock && (
+                      <span className="ml-2 text-sm bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded-full">
+                        Demo Mode
+                      </span>
+                    )}
+                  </h3>
                   <div className="bg-black/20 rounded-lg p-4 border border-white/10">
                     {apiResponse.error ? (
                       <div className="text-red-400">

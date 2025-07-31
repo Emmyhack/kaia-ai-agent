@@ -74,6 +74,36 @@ class DragonSwapService {
     const provider = network === 'mainnet' ? this.mainnetProvider : this.testnetProvider;
     const router = network === 'mainnet' ? this.mainnetRouter : this.testnetRouter;
     
+    // For testnet, use mock implementation since DragonSwap isn't deployed
+    if (network === 'testnet') {
+      try {
+        // Simulate realistic swap quote
+        const mockRate = tokenInAddress === ethers.ZeroAddress ? 0.85 : 1.18; // KAIA to MOCK rate
+        const mockAmountOut = amountIn * mockRate;
+        const mockSlippage = 0.5; // 0.5% slippage
+        
+        return {
+          success: true,
+          amountIn: amountIn,
+          amountOut: mockAmountOut.toFixed(6),
+          amountOutMin: (mockAmountOut * (1 - mockSlippage / 100)).toFixed(6),
+          path: [tokenInAddress, tokenOutAddress],
+          network: network,
+          isMock: true,
+          rate: mockRate,
+          slippage: mockSlippage
+        };
+      } catch (error) {
+        console.error('Mock swap quote failed:', error);
+        return {
+          success: false,
+          error: error.message,
+          network: network
+        };
+      }
+    }
+    
+    // For mainnet, use real DragonSwap (when available)
     if (!router) {
       throw new Error('Router not initialized for this network');
     }
@@ -94,7 +124,8 @@ class DragonSwapService {
         amountIn: amountIn,
         amountOut: ethers.formatEther(amountOut),
         path: path,
-        network: network
+        network: network,
+        isMock: false
       };
     } catch (error) {
       console.error('Get swap quote failed:', error);
@@ -113,6 +144,35 @@ class DragonSwapService {
     const provider = network === 'mainnet' ? this.mainnetProvider : this.testnetProvider;
     const router = network === 'mainnet' ? this.mainnetRouter : this.testnetRouter;
     
+    // For testnet, simulate swap execution
+    if (network === 'testnet') {
+      try {
+        // Simulate transaction hash
+        const mockTxHash = '0x' + Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join('');
+        const mockGasUsed = Math.floor(Math.random() * 50000) + 150000; // Realistic gas usage
+        
+        // Simulate processing time
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        return {
+          success: true,
+          transactionHash: mockTxHash,
+          gasUsed: mockGasUsed.toString(),
+          network: network,
+          isMock: true,
+          blockNumber: Math.floor(Math.random() * 1000000) + 1000000
+        };
+      } catch (error) {
+        console.error('Mock swap execution failed:', error);
+        return {
+          success: false,
+          error: error.message,
+          network: network
+        };
+      }
+    }
+    
+    // For mainnet, use real DragonSwap (when available)
     if (!router || !this.signer) {
       throw new Error('Router or signer not initialized');
     }
@@ -163,7 +223,8 @@ class DragonSwapService {
         success: true,
         transactionHash: receipt.hash,
         gasUsed: receipt.gasUsed.toString(),
-        network: network
+        network: network,
+        isMock: false
       };
     } catch (error) {
       console.error('Execute swap failed:', error);

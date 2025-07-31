@@ -1430,8 +1430,8 @@ class KaiaAgentService {
         return quoteResult;
       }
 
-      // Step 2: Check if approval is needed (for token swaps)
-      if (tokenInAddress !== ethers.ZeroAddress) {
+      // Step 2: Check if approval is needed (for token swaps) - only for real swaps
+      if (tokenInAddress !== ethers.ZeroAddress && !quoteResult.isMock) {
         const routerAddress = network === 'mainnet' ? 
           '0x0000000000000000000000000000000000000000' : // TODO: Add mainnet router
           '0x554Ef03BA2A7CC0A539731CA6beF561fA2648c4E'; // Testnet router
@@ -1459,7 +1459,8 @@ class KaiaAgentService {
         success: true,
         quote: quoteResult,
         swap: swapResult,
-        network: network
+        network: network,
+        isMock: quoteResult.isMock || swapResult.isMock
       };
     } catch (error) {
       console.error('DragonSwap swap failed:', error);

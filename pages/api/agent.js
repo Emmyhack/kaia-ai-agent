@@ -189,18 +189,23 @@ export default async function handler(req, res) {
           const tokenInSymbol = tokenIn === ethers.ZeroAddress ? 'KAIA' : 'MOCK';
           const tokenOutSymbol = tokenOut === ethers.ZeroAddress ? 'KAIA' : 'MOCK';
           
-          const response = `🔄 **DragonSwap Transaction Successful!**\n\n` +
+          const isMock = swapResult.quote?.isMock || swapResult.swap?.isMock;
+          const mockIndicator = isMock ? ' (Demo Mode)' : '';
+          
+          const response = `🔄 **DragonSwap Transaction Successful${mockIndicator}!**\n\n` +
             `**Network:** ${network === 'testnet' ? 'Kaia Testnet' : 'Kaia Mainnet'}\n` +
             `**Amount In:** ${amount} ${tokenInSymbol}\n` +
             `**Amount Out:** ${swapResult.quote.amountOut} ${tokenOutSymbol}\n` +
             `**Transaction Hash:** \`${swapResult.swap.transactionHash}\`\n` +
-            `**Gas Used:** ${swapResult.swap.gasUsed}\n\n` +
-            `✅ Swap executed successfully using DragonSwap!`;
+            `**Gas Used:** ${swapResult.swap.gasUsed}\n` +
+            (isMock ? `**Demo Mode:** Simulated swap for testing\n` : '') +
+            `\n✅ Swap executed successfully using DragonSwap!`;
           
           return res.status(200).json({
             response: response,
             success: true,
-            swapData: swapResult
+            swapData: swapResult,
+            isMock: isMock
           });
         } else {
           return res.status(200).json({

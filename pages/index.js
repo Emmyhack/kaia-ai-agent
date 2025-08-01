@@ -4,9 +4,9 @@ import { Toaster, toast } from 'react-hot-toast';
 import dynamic from 'next/dynamic';
 
 // Dynamic imports to prevent SSR issues
-const AdvancedWalletConnection = dynamic(() => import('../components/AdvancedWalletConnection'), {
+const Web3ModalWalletConnection = dynamic(() => import('../components/Web3ModalWalletConnection'), {
   ssr: false,
-  loading: () => <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 animate-pulse">Loading advanced wallet connection...</div>
+  loading: () => <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 animate-pulse">Loading Web3Modal wallet connection...</div>
 });
 
 const ChatInterface = dynamic(() => import('../components/ChatInterface'), {
@@ -443,9 +443,9 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Advanced Wallet Connection */}
+        {/* Web3Modal Wallet Connection */}
         <div className="mb-8 max-w-md mx-auto">
-          <AdvancedWalletConnection
+          <Web3ModalWalletConnection
             onConnect={handleWalletConnect}
             onDisconnect={handleWalletDisconnect}
             onNetworkChange={handleNetworkChange}

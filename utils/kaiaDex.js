@@ -46,12 +46,10 @@ class KaiaDexService {
         testnet: {
           // Add actual DEX router addresses here
           'KaiaSwap': '0x0000000000000000000000000000000000000000', // Replace with actual address
-          'DragonSwap': '0x0000000000000000000000000000000000000000', // Replace with actual address
           'KaiaDex': '0x0000000000000000000000000000000000000000'   // Replace with actual address
         },
         mainnet: {
           'KaiaSwap': '0x0000000000000000000000000000000000000000', // Replace with actual address
-          'DragonSwap': '0x0000000000000000000000000000000000000000', // Replace with actual address
           'KaiaDex': '0x0000000000000000000000000000000000000000'   // Replace with actual address
         }
       };
@@ -86,7 +84,6 @@ class KaiaDexService {
     if (network === 'testnet') {
       return [
         'KaiaSwap',
-        'DragonSwap', 
         'KaiaDex'
       ];
     }

@@ -238,7 +238,7 @@ const ChatInterface = forwardRef(function ChatInterface({ walletAddress, isWalle
               </div>
               <div className="bg-white/5 rounded-lg p-3 border border-white/10">
                 <div className="text-purple-400 font-medium">Swap Tokens</div>
-                <div className="text-gray-400">"Swap 10 KAIA for USDC"</div>
+                <div className="text-gray-400">"Swap 10 KAIA for MOCK"</div>
               </div>
               <div className="bg-white/5 rounded-lg p-3 border border-white/10">
                 <div className="text-green-400 font-medium">Send Tokens</div>

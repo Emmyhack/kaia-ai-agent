@@ -532,10 +532,10 @@ export default function Home() {
                   </button>
                   <button
                     className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={() => sendPrompt(`Swap 10 KAIA for MOCK token on ${selectedNetwork} using DragonSwap`)}
+                    onClick={() => sendPrompt(`Swap 10 KAIA for MOCK token on ${selectedNetwork}`)}
                     disabled={isProcessing}
                   >
-                    {isProcessing ? 'Processing...' : `Swap with DragonSwap${selectedNetwork === 'testnet' ? ' (Demo)' : ''}`}
+                    {isProcessing ? 'Processing...' : `Swap Tokens${selectedNetwork === 'testnet' ? ' (Demo)' : ''}`}
                   </button>
                   <button
                     className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"

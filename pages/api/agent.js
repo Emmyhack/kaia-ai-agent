@@ -192,14 +192,14 @@ export default async function handler(req, res) {
           const isMock = swapResult.quote?.isMock || swapResult.swap?.isMock;
           const mockIndicator = isMock ? ' (Demo Mode)' : '';
           
-          const response = `🔄 **DragonSwap Transaction Successful${mockIndicator}!**\n\n` +
+          const response = `🔄 **Swap Transaction Successful${mockIndicator}!**\n\n` +
             `**Network:** ${network === 'testnet' ? 'Kaia Testnet' : 'Kaia Mainnet'}\n` +
             `**Amount In:** ${amount} ${tokenInSymbol}\n` +
             `**Amount Out:** ${swapResult.quote.amountOut} ${tokenOutSymbol}\n` +
             `**Transaction Hash:** \`${swapResult.swap.transactionHash}\`\n` +
             `**Gas Used:** ${swapResult.swap.gasUsed}\n` +
             (isMock ? `**Demo Mode:** Simulated swap for testing\n` : '') +
-            `\n✅ Swap executed successfully using DragonSwap!`;
+            `\n✅ Swap executed successfully!${lowerPrompt.includes('dragonswap') ? ' (via DragonSwap)' : ''}`;
           
           return res.status(200).json({
             response: response,
@@ -209,13 +209,13 @@ export default async function handler(req, res) {
           });
         } else {
           return res.status(200).json({
-            response: `❌ **DragonSwap Swap Failed**\n\n**Error:** ${swapResult.error}\n\nPlease try again or check your token balance and allowances.`,
+            response: `❌ **Swap Failed**\n\n**Error:** ${swapResult.error}\n\nPlease try again or check your token balance and allowances.`,
             success: false,
             error: swapResult.error
           });
         }
       } catch (error) {
-        console.error('DragonSwap swap error:', error);
+        console.error('Swap error:', error);
         return res.status(200).json({
           response: `❌ **Swap Error**\n\n**Error:** ${error.message}\n\nPlease ensure you have sufficient balance and try again.`,
           success: false,
@@ -452,7 +452,7 @@ export default async function handler(req, res) {
 
     // Default response for unrecognized queries
     return res.status(200).json({
-      response: `🤖 **Kaia AI Assistant - ${network}**\n\nI can help you with real blockchain operations on the ${network}:\n\n**💰 Balance & Network:**\n• "Check my KAIA balance on ${network}"\n• "Check network status on ${network}"\n\n**🔄 Trading & Swaps:**\n• "Swap 10 KAIA for MOCK on ${network} using DragonSwap"\n• "Analyze KAIA market on ${network}"\n• "Show market overview on ${network}"\n\n**💸 Transfers:**\n• "Transfer 50 KAIA to 0x... on ${network}"\n• "Send 100 MOCK to 0x... on ${network}"\n\n**🌾 Yield Farming:**\n• "Show yield farming opportunities on ${network}"\n• "Deposit 200 KAIA to farm on ${network}"\n\n**📊 Analysis:**\n• "Analyze MOCK token on ${network}"\n• "Get market data on ${network}"\n\nAll operations use real blockchain data from the ${network === 'testnet' ? 'Kaia Testnet' : 'Kaia Mainnet'}.`,
+      response: `🤖 **Kaia AI Assistant - ${network}**\n\nI can help you with real blockchain operations on the ${network}:\n\n**💰 Balance & Network:**\n• "Check my KAIA balance on ${network}"\n• "Check network status on ${network}"\n\n**🔄 Trading & Swaps:**\n• "Swap 10 KAIA for MOCK on ${network}"\n• "Analyze KAIA market on ${network}"\n• "Show market overview on ${network}"\n\n**💸 Transfers:**\n• "Transfer 50 KAIA to 0x... on ${network}"\n• "Send 100 MOCK to 0x... on ${network}"\n\n**🌾 Yield Farming:**\n• "Show yield farming opportunities on ${network}"\n• "Deposit 200 KAIA to farm on ${network}"\n\n**📊 Analysis:**\n• "Analyze MOCK token on ${network}"\n• "Get market data on ${network}"\n\nAll operations use real blockchain data from the ${network === 'testnet' ? 'Kaia Testnet' : 'Kaia Mainnet'}.`,
       steps: [],
       toolCalls: [],
       success: true,

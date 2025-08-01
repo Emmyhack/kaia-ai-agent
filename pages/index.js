@@ -4,9 +4,9 @@ import { Toaster, toast } from 'react-hot-toast';
 import dynamic from 'next/dynamic';
 
 // Dynamic imports to prevent SSR issues
-const WalletConnection = dynamic(() => import('../components/WalletConnection'), {
+const AdvancedWalletConnection = dynamic(() => import('../components/AdvancedWalletConnection'), {
   ssr: false,
-  loading: () => <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 animate-pulse">Loading wallet connection...</div>
+  loading: () => <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 animate-pulse">Loading advanced wallet connection...</div>
 });
 
 const ChatInterface = dynamic(() => import('../components/ChatInterface'), {
@@ -104,17 +104,22 @@ export default function Home() {
     }
   };
 
-  const handleWalletConnect = (address) => {
-    console.log('Wallet connected with address:', address);
-    setWalletAddress(address);
+  const handleWalletConnect = (result) => {
+    console.log('Wallet connected with result:', result);
+    setWalletAddress(result.address);
     setIsConnected(true);
-    updateBalance(address);
+    updateBalance(result.address);
   };
 
   const handleWalletDisconnect = () => {
     setWalletAddress('');
     setIsConnected(false);
     setBalance('0');
+  };
+
+  const handleNetworkChange = (network) => {
+    console.log('Network changed to:', network);
+    setSelectedNetwork(network);
   };
 
   // Function to send a prompt to the chat bot programmatically
@@ -427,14 +432,12 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Wallet Connection */}
-        <div className="mb-8">
-          <WalletConnection
-            isConnected={isConnected}
-            walletAddress={walletAddress}
-            balance={balance}
+        {/* Advanced Wallet Connection */}
+        <div className="mb-8 max-w-md mx-auto">
+          <AdvancedWalletConnection
             onConnect={handleWalletConnect}
             onDisconnect={handleWalletDisconnect}
+            onNetworkChange={handleNetworkChange}
           />
         </div>
 

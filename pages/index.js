@@ -1,12 +1,23 @@
 import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
+import { Toaster, toast } from 'react-hot-toast';
 import dynamic from 'next/dynamic';
-import { Toaster } from 'react-hot-toast';
 
-// Dynamic imports to avoid SSR issues
-const ChatInterface = dynamic(() => import('../components/ChatInterface'), { ssr: false });
-const WalletConnection = dynamic(() => import('../components/WalletConnection'), { ssr: false });
-const AgentStats = dynamic(() => import('../components/AgentStats'), { ssr: false });
+// Dynamic imports to prevent SSR issues
+const WalletConnection = dynamic(() => import('../components/WalletConnection'), {
+  ssr: false,
+  loading: () => <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 animate-pulse">Loading wallet connection...</div>
+});
+
+const ChatInterface = dynamic(() => import('../components/ChatInterface'), {
+  ssr: false,
+  loading: () => <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 animate-pulse">Loading chat interface...</div>
+});
+
+const AgentStats = dynamic(() => import('../components/AgentStats'), {
+  ssr: false,
+  loading: () => <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 animate-pulse">Loading agent stats...</div>
+});
 
 // Add these at the top for demo addresses
 const MOCK_ERC20_ADDRESS = process.env.NEXT_PUBLIC_MOCK_ERC20_ADDRESS || '0x8C82fa4dc47a9bf5034Bb38815c843B75EF76690';
@@ -49,25 +60,27 @@ export default function Home() {
   }, [componentsLoaded]);
 
   const checkWalletConnection = async () => {
-    if (typeof window !== 'undefined' && window.ethereum) {
+    if (typeof window === 'undefined') return;
+    
+    if (window.ethereum) {
       try {
-        console.log('Checking for existing wallet connection...');
         const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-        console.log('Existing accounts:', accounts);
-        
         if (accounts.length > 0) {
-          console.log('Found existing connection:', accounts[0]);
-          setWalletAddress(accounts[0]);
-          setIsConnected(true);
-          await updateBalance(accounts[0]);
-        } else {
-          console.log('No existing wallet connection found');
+          handleWalletConnect(accounts[0]);
         }
       } catch (error) {
         console.error('Error checking wallet connection:', error);
       }
-    } else {
-      console.log('MetaMask not detected');
+    } else if (window.kaia || window.kaiaWallet) {
+      try {
+        const kaiaProvider = window.kaia || window.kaiaWallet;
+        const accounts = await kaiaProvider.request({ method: 'eth_accounts' });
+        if (accounts.length > 0) {
+          handleWalletConnect(accounts[0]);
+        }
+      } catch (error) {
+        console.error('Error checking Kaia wallet connection:', error);
+      }
     }
   };
 
@@ -109,9 +122,7 @@ export default function Home() {
     if (!isConnected) {
       console.log('Wallet not connected');
       // Show a toast notification if wallet is not connected
-      if (typeof window !== 'undefined' && window.toast) {
-        window.toast.error('Please connect your wallet first');
-      }
+      toast.error('Please connect your wallet first');
       return;
     }
     
@@ -140,29 +151,28 @@ export default function Home() {
       if (data.success) {
         setApiResponse(data);
         // Show success message
-        if (typeof window !== 'undefined' && window.toast) {
-          window.toast.success('Query processed successfully!');
-        }
+        toast.success('Query processed successfully!');
       } else {
         console.error('API error:', data.error);
         setApiResponse({ error: data.error || 'Unknown error' });
-        if (typeof window !== 'undefined' && window.toast) {
-          window.toast.error('Error: ' + (data.error || 'Unknown error'));
-        }
+        toast.error('Error: ' + (data.error || 'Unknown error'));
       }
     })
     .catch(error => {
       console.error('API call failed:', error);
       setIsProcessing(false);
       setApiResponse({ error: 'Network error: ' + error.message });
-      if (typeof window !== 'undefined' && window.toast) {
-        window.toast.error('Network error: ' + error.message);
-      }
+      toast.error('Network error: ' + error.message);
     });
   };
 
   // Network switching function
   const switchNetwork = async (targetNetwork) => {
+    if (typeof window === 'undefined') {
+      setSelectedNetwork(targetNetwork);
+      return;
+    }
+
     if (!isConnected) {
       setSelectedNetwork(targetNetwork);
       return;
@@ -276,7 +286,7 @@ export default function Home() {
 
   // Check current wallet network and sync with selected network
   const checkAndSyncNetwork = async () => {
-    if (!isConnected) return;
+    if (typeof window === 'undefined' || !isConnected) return;
 
     try {
       let currentChainId;
@@ -307,7 +317,9 @@ export default function Home() {
 
   // Listen for network changes
   useEffect(() => {
-    if (typeof window !== 'undefined' && (window.ethereum || window.kaia || window.kaiaWallet)) {
+    if (typeof window === 'undefined') return;
+    
+    if (window.ethereum || window.kaia || window.kaiaWallet) {
       const handleChainChanged = (chainId) => {
         const chainIdToNetwork = {
           '0x3e9': 'testnet',    // 1001

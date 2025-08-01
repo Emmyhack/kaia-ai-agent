@@ -413,7 +413,7 @@ export default async function handler(req, res) {
             const analysis = analysisResult.analysis;
             const realIndicator = analysis.isReal ? ' (Real Data)' : ' (Demo)';
             
-            const response = `📈 **Trade Analysis - ${analysis.token}${realIndicator}**\n\n` +
+            let response = `📈 **Trade Analysis - ${analysis.token}${realIndicator}**\n\n` +
               `**Current Price:** $${analysis.currentPrice}\n` +
               `**24h Change:** ${analysis.priceChange24h > 0 ? '+' : ''}${analysis.priceChange24h}%\n` +
               `**24h Volume:** ${analysis.volume24h}\n` +

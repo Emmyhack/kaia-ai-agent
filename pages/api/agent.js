@@ -140,7 +140,7 @@ const handler = async (req, res) => {
       }
     }
 
-    // Enhanced swap detection with DragonSwap support
+    // Enhanced swap detection with DEX support
     if (prompt.toLowerCase().includes('swap') || prompt.toLowerCase().includes('exchange')) {
       try {
         // Extract swap parameters from prompt
@@ -186,12 +186,12 @@ const handler = async (req, res) => {
           });
         }
         
-        // Use DEX service for real or simulated swaps
-        const kaiaDexService = new (await import('../../utils/kaiaDex.js')).default();
-        await kaiaDexService.initialize();
+        // Use demo swap service for guaranteed working swaps
+        const { demoSwapService } = await import('../../utils/demoServices.js');
+        await demoSwapService.initialize();
         
-        // Get best swap quote across all available DEXes
-        const quoteResult = await kaiaDexService.getBestSwapQuote(amount, tokenIn, tokenOut, network);
+        // Get swap quote
+        const quoteResult = await demoSwapService.getSwapQuote(amount, tokenIn, tokenOut, network);
         
         if (!quoteResult.success) {
           return res.status(200).json({
@@ -201,17 +201,16 @@ const handler = async (req, res) => {
           });
         }
         
-        // Simulate swap execution (since we're on testnet)
-        const swapResult = {
-          success: true,
-          dex: quoteResult.bestQuote.dex,
-          transactionHash: `0x${Math.random().toString(16).substring(2, 66)}`,
-          gasUsed: Math.floor(Math.random() * 200000) + 150000,
-          blockNumber: Math.floor(Math.random() * 1000000) + 1000000,
-          network: network,
-          isReal: false,
-          isTestnet: true
-        };
+        // Execute swap simulation
+        const swapResult = await demoSwapService.executeSwap(amount, tokenIn, tokenOut, userAddress, network);
+        
+        if (!swapResult.success) {
+          return res.status(200).json({
+            response: `❌ **Swap Execution Failed**\n\n**Error:** ${swapResult.error}\n\nPlease try again.`,
+            success: false,
+            error: swapResult.error
+          });
+        }
         
         if (swapResult.success) {
           const tokenInSymbol = tokenIn === ethers.ZeroAddress ? 'KAIA' : 'MOCK';
@@ -220,16 +219,18 @@ const handler = async (req, res) => {
           const isMock = swapResult.quote?.isMock || swapResult.swap?.isMock;
           const mockIndicator = isMock ? ' (Demo Mode)' : '';
           
-          const response = `🔄 **Token Swap via ${swapResult.dex}${mockIndicator}!**\n\n` +
+          const response = `🔄 **Token Swap Demo Successful!**\n\n` +
             `**Network:** ${network === 'testnet' ? 'Kaia Testnet' : 'Kaia Mainnet'}\n` +
-            `**DEX:** ${swapResult.dex}\n` +
             `**Amount In:** ${amount} ${tokenInSymbol}\n` +
-            `**Amount Out:** ${quoteResult.bestQuote.amountOut} ${tokenOutSymbol}\n` +
+            `**Amount Out:** ${quoteResult.amountOut} ${tokenOutSymbol}\n` +
+            `**Rate:** 1 ${tokenInSymbol} = ${quoteResult.rate} ${tokenOutSymbol}\n` +
+            `**Slippage:** ${quoteResult.slippage}%\n` +
             `**Transaction Hash:** \`${swapResult.transactionHash}\`\n` +
             `**Gas Used:** ${swapResult.gasUsed.toLocaleString()}\n` +
+            `**Gas Price:** ${swapResult.gasPrice} Gwei\n` +
             `**Block Number:** ${swapResult.blockNumber.toLocaleString()}\n` +
-            (swapResult.isTestnet ? `**Testnet Mode:** Simulated swap with real blockchain data\n` : '') +
-            `\n✅ Swap completed successfully via ${swapResult.dex}!`;
+            `**Demo Mode:** Simulated swap with real blockchain data\n` +
+            `\n✅ Demo swap completed successfully!`;
           
           return res.status(200).json({
             response: response,
@@ -319,17 +320,16 @@ const handler = async (req, res) => {
     if (lowerPrompt.includes('farm') || lowerPrompt.includes('yield') || lowerPrompt.includes('stake')) {
       try {
         if (lowerPrompt.includes('opportunities') || lowerPrompt.includes('suggest')) {
-          // Get real yield farming opportunities from blockchain
-          const kaiaYieldService = new (await import('../../utils/kaiaYield.js')).default();
-          await kaiaYieldService.initialize();
-          const opportunitiesResult = await kaiaYieldService.getYieldFarmingOpportunities(network);
+          // Get demo yield farming opportunities
+          const { demoYieldService } = await import('../../utils/demoServices.js');
+          await demoYieldService.initialize();
+          const opportunitiesResult = await demoYieldService.getYieldOpportunities(network);
           
           if (opportunitiesResult.success) {
             let response = `🌾 **Yield Farming Opportunities - ${network}**\n\n`;
             
                           opportunitiesResult.opportunities.forEach((opp, index) => {
-                const realIndicator = opp.isReal ? ' (Real Data)' : ' (Testnet Demo)';
-                response += `**${index + 1}. ${opp.name}${realIndicator}**\n` +
+                response += `**${index + 1}. ${opp.name} (Demo)**\n` +
                   `• **Type:** ${opp.type}\n` +
                   `• **APY:** ${opp.apy}%\n` +
                   `• **Total Staked:** ${opp.totalStaked} ${opp.stakingToken.symbol}\n` +
@@ -338,16 +338,7 @@ const handler = async (req, res) => {
                   `• **Address:** \`${opp.address}\`\n\n`;
               });
             
-            const realCount = opportunitiesResult.opportunities.filter(opp => opp.isReal).length;
-            const demoCount = opportunitiesResult.opportunities.filter(opp => !opp.isReal).length;
-            
-            if (realCount > 0) {
-              response += `✅ **${realCount} real farm(s) found on blockchain**\n`;
-            }
-            if (demoCount > 0) {
-              response += `🧪 **${demoCount} testnet demo farm(s) for testing**\n`;
-            }
-            
+            response += `🧪 **${opportunitiesResult.opportunities.length} demo farm(s) for testing**\n`;
             response += `\n💡 **Recommendation:** Consider ${opportunitiesResult.opportunities[0].name} for the best APY (${opportunitiesResult.opportunities[0].apy}%).`;
             
             return res.status(200).json({
@@ -355,6 +346,42 @@ const handler = async (req, res) => {
               success: true,
               farmingData: opportunitiesResult
             });
+          } else if (lowerPrompt.includes('position') || lowerPrompt.includes('my') || lowerPrompt.includes('staked')) {
+            // Get user yield farming positions
+            const { demoYieldService } = await import('../../utils/demoServices.js');
+            await demoYieldService.initialize();
+            const positionsResult = await demoYieldService.getUserPositions(userAddress, network);
+            
+            if (positionsResult.success) {
+              let response = `🌾 **Your Yield Farming Positions - ${network}**\n\n`;
+              
+              if (positionsResult.positions.length === 0) {
+                response += `📭 **No active positions found**\n\nYou don't have any active yield farming positions yet.\n\n💡 **Get started:** Try staking in one of our demo farms!`;
+              } else {
+                positionsResult.positions.forEach((pos, index) => {
+                  response += `**${index + 1}. ${pos.farmName}**\n` +
+                    `• **Staked:** ${pos.stakedAmount} ${pos.stakingToken}\n` +
+                    `• **Earned:** ${pos.earnedRewards} ${pos.rewardToken}\n` +
+                    `• **APY:** ${pos.apy}%\n` +
+                    `• **Status:** ${pos.isActive ? '🟢 Active' : '🔴 Inactive'}\n\n`;
+                });
+                
+                response += `🧪 **Demo Mode:** These are simulated positions for testing\n`;
+                response += `\n💡 **Total Value:** ${positionsResult.positions.reduce((sum, pos) => sum + parseFloat(pos.stakedAmount), 0).toFixed(2)} tokens staked`;
+              }
+              
+              return res.status(200).json({
+                response: response,
+                success: true,
+                positions: positionsResult.positions
+              });
+            } else {
+              return res.status(200).json({
+                response: `❌ **Failed to get positions**\n\n**Error:** ${positionsResult.error}\n\nPlease try again.`,
+                success: false,
+                error: positionsResult.error
+              });
+            }
           }
         } else if (lowerPrompt.includes('deposit') || lowerPrompt.includes('stake')) {
           // Deposit to yield farm

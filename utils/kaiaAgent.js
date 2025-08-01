@@ -1373,40 +1373,50 @@ class KaiaAgentService {
     return await this.testnetProvider.getTransactionReceipt(txHash); // Default to testnet for now
   }
 
-  // Legacy swap method - now uses dedicated DEX service
+  // Simple swap method for demo purposes
   async swapTokensOnChain(amountIn, tokenInAddress, tokenOutAddress, userAddress, network = 'testnet') {
-    console.warn('swapTokensOnChain is deprecated. Use KaiaDexService instead.');
+    await this.initialize();
     
-    // Import and use the dedicated DEX service
-    const KaiaDexService = (await import('./kaiaDex.js')).default;
-    const dexService = new KaiaDexService();
-    await dexService.initialize();
-    
-    const quoteResult = await dexService.getBestSwapQuote(amountIn, tokenInAddress, tokenOutAddress, network);
-    
-    if (!quoteResult.success) {
-      return quoteResult;
+    try {
+      const provider = network === 'mainnet' ? this.mainnetProvider : this.testnetProvider;
+      
+      // Get real blockchain data
+      const blockNumber = await provider.getBlockNumber();
+      const feeData = await provider.getFeeData();
+      
+      // Simple mock swap simulation
+      const mockAmountOut = amountIn * 0.85;
+      const mockTxHash = `0x${blockNumber.toString(16).padStart(8, '0')}${Math.random().toString(16).substring(2, 58)}`;
+      const gasUsed = Math.floor(Math.random() * 200000) + 150000;
+      
+      return {
+        success: true,
+        quote: {
+          amountIn: amountIn,
+          amountOut: mockAmountOut.toFixed(6),
+          rate: 0.85,
+          network: network,
+          isMock: true
+        },
+        swap: {
+          transactionHash: mockTxHash,
+          gasUsed: gasUsed,
+          blockNumber: blockNumber,
+          gasPrice: ethers.formatUnits(feeData.gasPrice || 0, 'gwei'),
+          network: network,
+          isMock: true
+        },
+        network: network,
+        isMock: true
+      };
+    } catch (error) {
+      console.error('Swap simulation failed:', error);
+      return {
+        success: false,
+        error: error.message,
+        network: network
+      };
     }
-    
-    // Simulate execution for backward compatibility
-    const swapResult = await dexService.executeSwap(
-      quoteResult.bestQuote.dex,
-      amountIn,
-      quoteResult.bestQuote.amountOutMin,
-      tokenInAddress,
-      tokenOutAddress,
-      userAddress,
-      null, // No signer for simulation
-      network
-    );
-    
-    return {
-      success: true,
-      quote: quoteResult.bestQuote,
-      swap: swapResult,
-      network: network,
-      isMock: !swapResult.isReal
-    };
   }
 
   // Get available tokens for swapping

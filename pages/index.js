@@ -113,7 +113,7 @@ export default function Home() {
   };
 
   // Function to send a prompt to the chat bot programmatically
-  const sendPrompt = (prompt, buttonId = null) => {
+  const sendPrompt = async (prompt, buttonId = null) => {
     console.log('sendPrompt called with:', prompt);
     console.log('Selected network:', selectedNetwork);
     console.log('isConnected:', isConnected);
@@ -131,48 +131,50 @@ export default function Home() {
     if (buttonId) {
       setProcessingButtons(prev => ({ ...prev, [buttonId]: true }));
     }
-    setApiResponse(null);
     
-    // Direct API call approach - more reliable
-    console.log('Making direct API call');
-    fetch('/api/agent', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        prompt: prompt,
-        userAddress: walletAddress,
-        network: selectedNetwork,
-      }),
-    })
-    .then(response => response.json())
-    .then(data => {
-      console.log('API response:', data);
-      // Clear processing state for specific button if provided
-      if (buttonId) {
-        setProcessingButtons(prev => ({ ...prev, [buttonId]: false }));
-      }
-      
-      if (data.success) {
-        setApiResponse(data);
-        // Show success message
-        toast.success('Query processed successfully!');
+    try {
+      // Use ChatInterface if available
+      if (chatRef.current && chatRef.current.sendPrompt) {
+        console.log('Using ChatInterface sendPrompt');
+        await chatRef.current.sendPrompt(prompt, selectedNetwork);
       } else {
-        console.error('API error:', data.error);
-        setApiResponse({ error: data.error || 'Unknown error' });
-        toast.error('Error: ' + (data.error || 'Unknown error'));
+        console.log('ChatInterface not available, using direct API call');
+        
+        const response = await fetch('/api/agent', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            prompt: prompt,
+            userAddress: walletAddress,
+            network: selectedNetwork,
+          }),
+        });
+        
+        const data = await response.json();
+        console.log('API response:', data);
+        
+        if (data.success) {
+          setApiResponse(data);
+          toast.success('Query processed successfully!');
+        } else {
+          console.error('API error:', data.error);
+          setApiResponse({ error: data.error || 'Unknown error' });
+          toast.error('Error: ' + (data.error || 'Unknown error'));
+        }
       }
-    })
-    .catch(error => {
-      console.error('API call failed:', error);
-      // Clear processing state for specific button if provided
+    } catch (error) {
+      console.error('sendPrompt failed:', error);
+      toast.error('Failed to process request: ' + error.message);
+    } finally {
+      // Always clear the button processing state
       if (buttonId) {
-        setProcessingButtons(prev => ({ ...prev, [buttonId]: false }));
+        setTimeout(() => {
+          setProcessingButtons(prev => ({ ...prev, [buttonId]: false }));
+        }, 2000); // Give enough time for the request to complete
       }
-      setApiResponse({ error: 'Network error: ' + error.message });
-      toast.error('Network error: ' + error.message);
-    });
+    }
   };
 
   // Network switching function

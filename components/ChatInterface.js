@@ -10,10 +10,10 @@ const ChatInterface = forwardRef(function ChatInterface({ walletAddress, isWalle
   const messagesEndRef = useRef(null);
 
   useImperativeHandle(ref, () => ({
-    sendPrompt: (prompt, network = 'testnet') => {
+    sendPrompt: async (prompt, network = 'testnet') => {
       console.log('ChatInterface.sendPrompt called with:', prompt, 'network:', network);
       setInputValue(prompt);
-      handleSubmit({ preventDefault: () => {} }, prompt, network);
+      return await handleSubmit({ preventDefault: () => {} }, prompt, network);
     },
   }));
 

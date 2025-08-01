@@ -31,7 +31,7 @@ export default function Home() {
   const [componentsLoaded, setComponentsLoaded] = useState(false);
   const [selectedNetwork, setSelectedNetwork] = useState('testnet');
   const [apiResponse, setApiResponse] = useState(null);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingButtons, setProcessingButtons] = useState({}); // Changed from isProcessing to individual button states
   const chatRef = useRef();
   const [aiError, setAiError] = useState(null);
 
@@ -113,11 +113,12 @@ export default function Home() {
   };
 
   // Function to send a prompt to the chat bot programmatically
-  const sendPrompt = (prompt) => {
+  const sendPrompt = async (prompt, buttonId = null) => {
     console.log('sendPrompt called with:', prompt);
     console.log('Selected network:', selectedNetwork);
     console.log('isConnected:', isConnected);
     console.log('walletAddress:', walletAddress);
+    console.log('buttonId:', buttonId);
     
     if (!isConnected) {
       console.log('Wallet not connected');
@@ -126,44 +127,54 @@ export default function Home() {
       return;
     }
     
-    // Set processing state
-    setIsProcessing(true);
-    setApiResponse(null);
+    // Set processing state for specific button if provided
+    if (buttonId) {
+      setProcessingButtons(prev => ({ ...prev, [buttonId]: true }));
+    }
     
-    // Direct API call approach - more reliable
-    console.log('Making direct API call');
-    fetch('/api/agent', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        prompt: prompt,
-        userAddress: walletAddress,
-        network: selectedNetwork,
-      }),
-    })
-    .then(response => response.json())
-    .then(data => {
-      console.log('API response:', data);
-      setIsProcessing(false);
-      
-      if (data.success) {
-        setApiResponse(data);
-        // Show success message
-        toast.success('Query processed successfully!');
+    try {
+      // Use ChatInterface if available
+      if (chatRef.current && chatRef.current.sendPrompt) {
+        console.log('Using ChatInterface sendPrompt');
+        await chatRef.current.sendPrompt(prompt, selectedNetwork);
       } else {
-        console.error('API error:', data.error);
-        setApiResponse({ error: data.error || 'Unknown error' });
-        toast.error('Error: ' + (data.error || 'Unknown error'));
+        console.log('ChatInterface not available, using direct API call');
+        
+        const response = await fetch('/api/agent', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            prompt: prompt,
+            userAddress: walletAddress,
+            network: selectedNetwork,
+          }),
+        });
+        
+        const data = await response.json();
+        console.log('API response:', data);
+        
+        if (data.success) {
+          setApiResponse(data);
+          toast.success('Query processed successfully!');
+        } else {
+          console.error('API error:', data.error);
+          setApiResponse({ error: data.error || 'Unknown error' });
+          toast.error('Error: ' + (data.error || 'Unknown error'));
+        }
       }
-    })
-    .catch(error => {
-      console.error('API call failed:', error);
-      setIsProcessing(false);
-      setApiResponse({ error: 'Network error: ' + error.message });
-      toast.error('Network error: ' + error.message);
-    });
+    } catch (error) {
+      console.error('sendPrompt failed:', error);
+      toast.error('Failed to process request: ' + error.message);
+    } finally {
+      // Always clear the button processing state
+      if (buttonId) {
+        setTimeout(() => {
+          setProcessingButtons(prev => ({ ...prev, [buttonId]: false }));
+        }, 2000); // Give enough time for the request to complete
+      }
+    }
   };
 
   // Network switching function
@@ -508,45 +519,45 @@ export default function Home() {
                 <div className="space-y-3">
                   <button
                     className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={() => sendPrompt(`Check my KAIA balance on ${selectedNetwork}`)}
-                    disabled={isProcessing}
+                    onClick={() => sendPrompt(`Check my KAIA balance on ${selectedNetwork}`, 'checkBalance')}
+                    disabled={processingButtons.checkBalance}
                   >
-                    {isProcessing ? 'Processing...' : 'Check Balance'}
+                    {processingButtons.checkBalance ? 'Processing...' : 'Check Balance'}
                   </button>
                   <button
                     className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={() => sendPrompt(`Swap 10 KAIA for MOCK token on ${selectedNetwork} using DragonSwap`)}
-                    disabled={isProcessing}
+                    onClick={() => sendPrompt(`Swap 10 KAIA for MOCK token on ${selectedNetwork}`, 'swap')}
+                    disabled={processingButtons.swap}
                   >
-                    {isProcessing ? 'Processing...' : `Swap with DragonSwap${selectedNetwork === 'testnet' ? ' (Demo)' : ''}`}
+                    {processingButtons.swap ? 'Processing...' : `Swap Tokens${selectedNetwork === 'testnet' ? ' (Demo)' : ''}`}
                   </button>
                   <button
                     className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={() => sendPrompt(`Check network status on ${selectedNetwork}`)}
-                    disabled={isProcessing}
+                    onClick={() => sendPrompt(`Check network status on ${selectedNetwork}`, 'networkStatus')}
+                    disabled={processingButtons.networkStatus}
                   >
-                    {isProcessing ? 'Processing...' : 'Network Status'}
+                    {processingButtons.networkStatus ? 'Processing...' : 'Network Status'}
                   </button>
                   <button
                     className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={() => sendPrompt(`Transfer 50 KAIA to 0x8Ff09c0a34184c35F86F5229d91280DfB523B59A on ${selectedNetwork}`)}
-                    disabled={isProcessing}
+                    onClick={() => sendPrompt(`Transfer 50 KAIA to 0x8Ff09c0a34184c35F86F5229d91280DfB523B59A on ${selectedNetwork}`, 'transfer')}
+                    disabled={processingButtons.transfer}
                   >
-                    {isProcessing ? 'Processing...' : 'Transfer Tokens'}
+                    {processingButtons.transfer ? 'Processing...' : 'Transfer Tokens'}
                   </button>
                   <button
                     className="w-full bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={() => sendPrompt(`Show yield farming opportunities on ${selectedNetwork}`)}
-                    disabled={isProcessing}
+                    onClick={() => sendPrompt(`Show yield farming opportunities on ${selectedNetwork}`, 'yieldFarming')}
+                    disabled={processingButtons.yieldFarming}
                   >
-                    {isProcessing ? 'Processing...' : 'Yield Farming'}
+                    {processingButtons.yieldFarming ? 'Processing...' : 'Yield Farming'}
                   </button>
                   <button
                     className="w-full bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={() => sendPrompt(`Analyze KAIA market on ${selectedNetwork}`)}
-                    disabled={isProcessing}
+                    onClick={() => sendPrompt(`Analyze KAIA market on ${selectedNetwork}`, 'tradeAnalysis')}
+                    disabled={processingButtons.tradeAnalysis}
                   >
-                    {isProcessing ? 'Processing...' : 'Trade Analysis'}
+                    {processingButtons.tradeAnalysis ? 'Processing...' : 'Trade Analysis'}
                   </button>
                 </div>
               </div>

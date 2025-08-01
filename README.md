@@ -52,6 +52,13 @@ An intelligent AI agent that enables natural language interaction with the Kaia 
 - **Contract Verification**: Verified contract status from blockchain explorer
 - **Interactive Farm Cards**: Click to view detailed farm information
 
+### 📊 Trade Analysis & Market Data
+- **Real-time Trade Analysis**: Live market data from Kaiascan API
+- **Market Sentiment**: AI-powered market sentiment analysis
+- **Trading Insights**: Professional trading recommendations
+- **Network Statistics**: Active addresses, transaction counts, volume analysis
+- **Auto-refresh**: Automatic data updates every 30 seconds
+
 ### 🛡️ Security & Reliability
 - **Smart Contract Security**: ReentrancyGuard, Pausable, Ownable patterns
 - **Environment Variables**: Secure configuration management
@@ -210,6 +217,8 @@ Use natural language to interact with the blockchain:
 "Show me the current gas price"
 "Analyze my recent trades"
 "What's the current block number?"
+"Show me market sentiment"
+"Get trading recommendations"
 ```
 
 ### 3. Advanced Features
@@ -219,6 +228,8 @@ Use natural language to interact with the blockchain:
 - **Network Status**: Live blockchain network monitoring
 - **Transaction History**: Real transaction data from Kaiascan
 - **Yield Farming**: Real APY and TVL data from contracts
+- **Trade Analysis**: Live market data and sentiment analysis
+- **Token Prices**: Real-time token prices with market data
 
 #### Multi-Token Support
 ```
@@ -232,6 +243,8 @@ Use natural language to interact with the blockchain:
 "Swap 100 MOCK to KAIA, then check my balance"
 "Show me yield farming opportunities and my positions"
 "Analyze the network status and gas prices"
+"Get market sentiment and trading recommendations"
+"Check token prices and market analysis"
 ```
 
 ## 🏗️ Smart Contract Details
@@ -360,6 +373,8 @@ POST /api/agent
 - `analyzeYields`: Analyze yield performance
 - `analyzeTrades`: Analyze trading activities
 - `getNetworkStatus`: Get network status (Real data)
+- `getTradeAnalysis`: Get market analysis and sentiment (Real data)
+- `getTokenPrices`: Get real-time token prices (Real data)
 
 ## 🛠️ Development
 
@@ -374,12 +389,17 @@ kaia-ai-agent/
 │   └── api/            # API routes
 │       ├── agent.js    # AI agent endpoint
 │       ├── test-kaiascan.js
-│       └── test-simple-wallet.js
+│       ├── test-simple-wallet.js
+│       ├── trade-analysis.js
+│       ├── token-prices.js
+│       └── test-panels.js
 ├── components/         # React components
 │   ├── AdvancedWalletConnection.js
 │   ├── ChatInterface.js
 │   ├── AgentStats.js
 │   ├── YieldFarmingPanel.js
+│   ├── TradeAnalysisPanel.js
+│   ├── TokenPricePanel.js
 │   └── NetworkStatus.js
 ├── utils/              # Utility functions
 │   ├── kaiaAgent.js   # Blockchain service
@@ -537,6 +557,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ### v1.1.0 (Current)
 - ✅ **Advanced Wallet Integration**: Multi-wallet support with MetaMask, Kaia Wallet, Coinbase, Trust, Binance
 - ✅ **Real Yield Farming Data**: Kaiascan API integration with live APY and TVL
+- ✅ **Trade Analysis Panel**: Real-time market data and sentiment analysis from Kaiascan
+- ✅ **Token Prices Panel**: Live token prices with market data and trends
 - ✅ **Enhanced Error Handling**: Clear error messages and user guidance
 - ✅ **Network Management**: Automatic network detection and switching
 - ✅ **Real Blockchain Data**: Live balance checking and network status

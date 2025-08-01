@@ -1,5 +1,4 @@
 import { ethers } from 'ethers';
-import DragonSwapService from './dragonSwap.js';
 
 // Complete Contract ABI from compiled contract
 const KAIA_AI_AGENT_ABI = [
@@ -819,10 +818,10 @@ const KAIA_TOKENS = {
   }
 };
 
-// DragonSwap router addresses
-const DRAGONSWAP_ROUTERS = {
-  testnet: '0x554Ef03BA2A7CC0A539731CA6beF561fA2648c4E', // Testnet router
-  mainnet: '0x0000000000000000000000000000000000000000', // TODO: Add mainnet router
+// Swap router addresses (placeholder for future implementation)
+const SWAP_ROUTERS = {
+  testnet: '0x0000000000000000000000000000000000000000', // No router deployed yet
+  mainnet: '0x0000000000000000000000000000000000000000', // No router deployed yet
 };
 
 // Network configurations
@@ -853,8 +852,8 @@ class KaiaAgentService {
     this.initialized = false;
   }
 
-  async initialize() {
-    if (this.initialized) return;
+  async initialize(externalSigner = null) {
+    if (this.initialized && !externalSigner) return;
 
     try {
       // Initialize testnet provider
@@ -863,9 +862,15 @@ class KaiaAgentService {
       // Initialize mainnet provider
       this.mainnetProvider = new ethers.JsonRpcProvider(NETWORKS.mainnet.rpcUrl);
       
-      // Initialize signer if private key is available
-      if (process.env.KAIA_PRIVATE_KEY) {
+      // Use external signer if provided (from connected wallet), otherwise use private key
+      if (externalSigner) {
+        this.signer = externalSigner;
+        console.log('Using external signer from connected wallet');
+      } else if (process.env.KAIA_PRIVATE_KEY) {
         this.signer = new ethers.Wallet(process.env.KAIA_PRIVATE_KEY, this.testnetProvider);
+        console.log('Using private key signer');
+      } else {
+        console.log('No signer available - read-only mode');
       }
       
       // Initialize contracts
@@ -885,12 +890,8 @@ class KaiaAgentService {
         );
       }
       
-      // Initialize DragonSwap service
-      dragonSwapService = new DragonSwapService();
-      await dragonSwapService.initialize();
-      
       this.initialized = true;
-      console.log('KaiaAgentService initialized with real blockchain connections and DragonSwap integration');
+      console.log('KaiaAgentService initialized with real blockchain connections');
     } catch (error) {
       console.error('Failed to initialize KaiaAgentService:', error);
       throw error;
@@ -1378,92 +1379,44 @@ class KaiaAgentService {
     return await this.testnetProvider.getTransactionReceipt(txHash); // Default to testnet for now
   }
 
-  // DragonSwap Integration Methods
-  async getDragonSwapQuote(amountIn, tokenInAddress, tokenOutAddress, network = 'testnet') {
-    await this.initialize();
-    if (!dragonSwapService) {
-      throw new Error('DragonSwap service not initialized');
-    }
-    return await dragonSwapService.getSwapQuote(amountIn, tokenInAddress, tokenOutAddress, network);
-  }
-
-  async executeDragonSwap(amountIn, amountOutMin, tokenInAddress, tokenOutAddress, userAddress, network = 'testnet') {
-    await this.initialize();
-    if (!dragonSwapService) {
-      throw new Error('DragonSwap service not initialized');
-    }
-    return await dragonSwapService.executeSwap(amountIn, amountOutMin, tokenInAddress, tokenOutAddress, userAddress, network);
-  }
-
-  async checkTokenAllowance(tokenAddress, ownerAddress, spenderAddress, network = 'testnet') {
-    await this.initialize();
-    if (!dragonSwapService) {
-      throw new Error('DragonSwap service not initialized');
-    }
-    return await dragonSwapService.checkAllowance(tokenAddress, ownerAddress, spenderAddress, network);
-  }
-
-  async approveTokensForSwap(tokenAddress, spenderAddress, amount, network = 'testnet') {
-    await this.initialize();
-    if (!dragonSwapService) {
-      throw new Error('DragonSwap service not initialized');
-    }
-    return await dragonSwapService.approveTokens(tokenAddress, spenderAddress, amount, network);
-  }
-
-  async getTokenInfo(tokenAddress, network = 'testnet') {
-    await this.initialize();
-    if (!dragonSwapService) {
-      throw new Error('DragonSwap service not initialized');
-    }
-    return await dragonSwapService.getTokenInfo(tokenAddress, network);
-  }
-
-  // Enhanced swap method that uses DragonSwap
-  async swapTokensWithDragonSwap(amountIn, tokenInAddress, tokenOutAddress, userAddress, network = 'testnet') {
+  // Simple swap method for demo purposes
+  async swapTokensOnChain(amountIn, tokenInAddress, tokenOutAddress, userAddress, network = 'testnet') {
     await this.initialize();
     
     try {
-      // Step 1: Get swap quote
-      const quoteResult = await this.getDragonSwapQuote(amountIn, tokenInAddress, tokenOutAddress, network);
-      if (!quoteResult.success) {
-        return quoteResult;
-      }
-
-      // Step 2: Check if approval is needed (for token swaps) - only for real swaps
-      if (tokenInAddress !== ethers.ZeroAddress && !quoteResult.isMock) {
-        const routerAddress = network === 'mainnet' ? 
-          '0x0000000000000000000000000000000000000000' : // TODO: Add mainnet router
-          '0x554Ef03BA2A7CC0A539731CA6beF561fA2648c4E'; // Testnet router
-        
-        const allowanceResult = await this.checkTokenAllowance(tokenInAddress, userAddress, routerAddress, network);
-        if (allowanceResult.success) {
-          const allowance = parseFloat(allowanceResult.allowance);
-          const requiredAmount = parseFloat(amountIn);
-          
-          if (allowance < requiredAmount) {
-            // Need to approve
-            const approveResult = await this.approveTokensForSwap(tokenInAddress, routerAddress, amountIn, network);
-            if (!approveResult.success) {
-              return approveResult;
-            }
-          }
-        }
-      }
-
-      // Step 3: Execute swap
-      const amountOutMin = parseFloat(quoteResult.amountOut) * 0.95; // 5% slippage tolerance
-      const swapResult = await this.executeDragonSwap(amountIn, amountOutMin, tokenInAddress, tokenOutAddress, userAddress, network);
+      const provider = network === 'mainnet' ? this.mainnetProvider : this.testnetProvider;
+      
+      // Get real blockchain data
+      const blockNumber = await provider.getBlockNumber();
+      const feeData = await provider.getFeeData();
+      
+      // Simple mock swap simulation
+      const mockAmountOut = amountIn * 0.85;
+      const mockTxHash = `0x${blockNumber.toString(16).padStart(8, '0')}${Math.random().toString(16).substring(2, 58)}`;
+      const gasUsed = Math.floor(Math.random() * 200000) + 150000;
       
       return {
         success: true,
-        quote: quoteResult,
-        swap: swapResult,
+        quote: {
+          amountIn: amountIn,
+          amountOut: mockAmountOut.toFixed(6),
+          rate: 0.85,
+          network: network,
+          isMock: true
+        },
+        swap: {
+          transactionHash: mockTxHash,
+          gasUsed: gasUsed,
+          blockNumber: blockNumber,
+          gasPrice: ethers.formatUnits(feeData.gasPrice || 0, 'gwei'),
+          network: network,
+          isMock: true
+        },
         network: network,
-        isMock: quoteResult.isMock || swapResult.isMock
+        isMock: true
       };
     } catch (error) {
-      console.error('DragonSwap swap failed:', error);
+      console.error('Swap simulation failed:', error);
       return {
         success: false,
         error: error.message,
@@ -1512,9 +1465,9 @@ class KaiaAgentService {
     };
   }
 
-  // Get DragonSwap router address for a network
-  getDragonSwapRouter(network = 'testnet') {
-    return DRAGONSWAP_ROUTERS[network] || '0x0000000000000000000000000000000000000000';
+  // Get swap router address for a network (placeholder for future implementation)
+  getSwapRouter(network = 'testnet') {
+    return '0x0000000000000000000000000000000000000000'; // No router deployed yet
   }
 
   // Token Transfer Methods
@@ -1523,7 +1476,7 @@ class KaiaAgentService {
     
     try {
       if (!this.signer) {
-        throw new Error('Signer not initialized for transfers');
+        throw new Error('Wallet not connected. Please connect your wallet to perform transfers.');
       }
 
       const provider = network === 'mainnet' ? this.mainnetProvider : this.testnetProvider;
@@ -1592,7 +1545,7 @@ class KaiaAgentService {
       // Mock yield farming opportunities (in real implementation, this would query DeFi protocols)
       if (network === 'testnet') {
         opportunities.push({
-          protocol: 'DragonFarm',
+          protocol: 'KaiaFarm',
           pair: 'KAIA-MOCK',
           apy: '12.5%',
           tvl: '1,250,000 KAIA',
@@ -1615,7 +1568,7 @@ class KaiaAgentService {
       } else {
         // Mainnet opportunities (when available)
         opportunities.push({
-          protocol: 'DragonFarm',
+          protocol: 'KaiaFarm',
           pair: 'KAIA-USDT',
           apy: '15.8%',
           tvl: '5,200,000 KAIA',
@@ -1646,7 +1599,7 @@ class KaiaAgentService {
     
     try {
       if (!this.signer) {
-        throw new Error('Signer not initialized for farming');
+        throw new Error('Wallet not connected. Please connect your wallet to perform farming operations.');
       }
 
       // Mock farm contract interaction (in real implementation, this would interact with actual farm contracts)
@@ -1823,7 +1776,7 @@ class KaiaAgentService {
           
           if (isActive && totalSupplyEth > 0) {
             opportunities.push({
-              protocol: 'DragonFarm',
+              protocol: 'KaiaFarm',
               pair: 'KAIA-MOCK',
               apy: `${apy.toFixed(2)}%`,
               tvl: `${(totalSupplyEth / 1000).toFixed(1)}K KAIA`,
@@ -1845,7 +1798,7 @@ class KaiaAgentService {
       // If no real farms found, return mock data for demo
       if (opportunities.length === 0) {
         opportunities.push({
-          protocol: 'DragonFarm',
+          protocol: 'KaiaFarm',
           pair: 'KAIA-MOCK',
           apy: '12.5%',
           tvl: '1,250,000 KAIA',

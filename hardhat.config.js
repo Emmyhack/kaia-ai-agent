@@ -17,8 +17,8 @@ module.exports = {
       chainId: 1337,
     },
     kaia: {
-      url: "https://public-en-kairos.node.kaia.io",
-      chainId: 1001,
+      url: "https://public-en.node.kaia.io",
+      chainId: 8217,
       accounts: process.env.KAIA_PRIVATE_KEY ? [process.env.KAIA_PRIVATE_KEY] : [],
       gasPrice: 25000000000, // 25 Gwei
     },

@@ -4,9 +4,9 @@ import { Toaster, toast } from 'react-hot-toast';
 import dynamic from 'next/dynamic';
 
 // Dynamic imports to prevent SSR issues
-const WalletConnection = dynamic(() => import('../components/WalletConnection'), {
+const AdvancedWalletConnection = dynamic(() => import('../components/AdvancedWalletConnection'), {
   ssr: false,
-  loading: () => <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 animate-pulse">Loading wallet connection...</div>
+  loading: () => <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 animate-pulse">Loading advanced wallet connection...</div>
 });
 
 const ChatInterface = dynamic(() => import('../components/ChatInterface'), {
@@ -17,6 +17,26 @@ const ChatInterface = dynamic(() => import('../components/ChatInterface'), {
 const AgentStats = dynamic(() => import('../components/AgentStats'), {
   ssr: false,
   loading: () => <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 animate-pulse">Loading agent stats...</div>
+});
+
+const NetworkStatus = dynamic(() => import('../components/NetworkStatus'), {
+  ssr: false,
+  loading: () => <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 animate-pulse">Loading network status...</div>
+});
+
+const YieldFarmingPanel = dynamic(() => import('../components/YieldFarmingPanel'), {
+  ssr: false,
+  loading: () => <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 animate-pulse">Loading yield farming data...</div>
+});
+
+const TradeAnalysisPanel = dynamic(() => import('../components/TradeAnalysisPanel'), {
+  ssr: false,
+  loading: () => <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 animate-pulse">Loading trade analysis data...</div>
+});
+
+const TokenPricePanel = dynamic(() => import('../components/TokenPricePanel'), {
+  ssr: false,
+  loading: () => <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 animate-pulse">Loading token price data...</div>
 });
 
 // Add these at the top for demo addresses
@@ -99,17 +119,28 @@ export default function Home() {
     }
   };
 
-  const handleWalletConnect = (address) => {
-    console.log('Wallet connected with address:', address);
-    setWalletAddress(address);
+  const handleWalletConnect = (result) => {
+    console.log('Wallet connected with result:', result);
+    setWalletAddress(result.address);
     setIsConnected(true);
-    updateBalance(address);
+    updateBalance(result.address);
   };
 
   const handleWalletDisconnect = () => {
     setWalletAddress('');
     setIsConnected(false);
     setBalance('0');
+  };
+
+  const handleNetworkChange = (network) => {
+    console.log('Network changed to:', network);
+    setSelectedNetwork(network);
+  };
+
+  const handleFarmSelect = (farm) => {
+    console.log('Farm selected:', farm);
+    const prompt = `Show detailed information for ${farm.name} yield farm on ${selectedNetwork}`;
+    sendPrompt(prompt);
   };
 
   // Function to send a prompt to the chat bot programmatically
@@ -141,6 +172,7 @@ export default function Home() {
         prompt: prompt,
         userAddress: walletAddress,
         network: selectedNetwork,
+
       }),
     })
     .then(response => response.json())
@@ -319,39 +351,51 @@ export default function Home() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
-    if (window.ethereum || window.kaia || window.kaiaWallet) {
-      const handleChainChanged = (chainId) => {
-        const chainIdToNetwork = {
-          '0x3e9': 'testnet',    // 1001
-          '0x2019': 'mainnet'    // 8217
-        };
-        
-        const newNetwork = chainIdToNetwork[chainId];
-        if (newNetwork && newNetwork !== selectedNetwork) {
-          setSelectedNetwork(newNetwork);
-          toast.success(`Wallet switched to ${newNetwork === 'testnet' ? 'Kaia Testnet' : 'Kaia Mainnet'}`);
-        }
+    const handleChainChanged = (chainId) => {
+      const chainIdToNetwork = {
+        '0x3e9': 'testnet',    // 1001
+        '0x2019': 'mainnet'    // 8217
       };
+      
+      const newNetwork = chainIdToNetwork[chainId];
+      if (newNetwork && newNetwork !== selectedNetwork) {
+        setSelectedNetwork(newNetwork);
+        toast.success(`Wallet switched to ${newNetwork === 'testnet' ? 'Kaia Testnet' : 'Kaia Mainnet'}`);
+      }
+    };
 
+    const cleanupListeners = () => {
       if (window.ethereum) {
-        window.ethereum.on('chainChanged', handleChainChanged);
+        window.ethereum.removeListener('chainChanged', handleChainChanged);
+        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
       }
       if (window.kaia || window.kaiaWallet) {
         const kaiaProvider = window.kaia || window.kaiaWallet;
-        kaiaProvider.on('chainChanged', handleChainChanged);
+        kaiaProvider.removeListener('chainChanged', handleChainChanged);
+        kaiaProvider.removeListener('accountsChanged', handleAccountsChanged);
       }
+    };
 
-      return () => {
-        if (window.ethereum) {
-          window.ethereum.removeListener('chainChanged', handleChainChanged);
-        }
-        if (window.kaia || window.kaiaWallet) {
-          const kaiaProvider = window.kaia || window.kaiaWallet;
-          kaiaProvider.removeListener('chainChanged', handleChainChanged);
-        }
-      };
+    const handleAccountsChanged = (accounts) => {
+      if (accounts.length === 0) {
+        handleWalletDisconnect();
+      } else if (accounts[0] !== walletAddress) {
+        handleWalletConnect(accounts[0]);
+      }
+    };
+
+    if (window.ethereum) {
+      window.ethereum.on('chainChanged', handleChainChanged);
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
     }
-  }, [selectedNetwork]);
+    if (window.kaia || window.kaiaWallet) {
+      const kaiaProvider = window.kaia || window.kaiaWallet;
+      kaiaProvider.on('chainChanged', handleChainChanged);
+      kaiaProvider.on('accountsChanged', handleAccountsChanged);
+    }
+
+    return cleanupListeners;
+  }, [selectedNetwork, walletAddress]);
 
   // Check network when wallet connects
   useEffect(() => {
@@ -410,14 +454,12 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Wallet Connection */}
-        <div className="mb-8">
-          <WalletConnection
-            isConnected={isConnected}
-            walletAddress={walletAddress}
-            balance={balance}
+        {/* Advanced Wallet Connection */}
+        <div className="mb-8 max-w-md mx-auto">
+          <AdvancedWalletConnection
             onConnect={handleWalletConnect}
             onDisconnect={handleWalletDisconnect}
+            onNetworkChange={handleNetworkChange}
           />
         </div>
 
@@ -491,6 +533,16 @@ export default function Home() {
                   <div>{aiError}</div>
                 </div>
               )}
+              
+              {/* Trade Analysis Panel */}
+              <div className="mt-6">
+                <TradeAnalysisPanel selectedNetwork={selectedNetwork} />
+              </div>
+              
+              {/* Token Prices Panel */}
+              <div className="mt-6">
+                <TokenPricePanel selectedNetwork={selectedNetwork} />
+              </div>
             </div>
 
             {/* Sidebar */}
@@ -502,54 +554,11 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Quick Actions */}
-              <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10">
-                <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
-                <div className="space-y-3">
-                  <button
-                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={() => sendPrompt(`Check my KAIA balance on ${selectedNetwork}`)}
-                    disabled={isProcessing}
-                  >
-                    {isProcessing ? 'Processing...' : 'Check Balance'}
-                  </button>
-                  <button
-                    className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={() => sendPrompt(`Swap 10 KAIA for MOCK token on ${selectedNetwork} using DragonSwap`)}
-                    disabled={isProcessing}
-                  >
-                    {isProcessing ? 'Processing...' : `Swap with DragonSwap${selectedNetwork === 'testnet' ? ' (Demo)' : ''}`}
-                  </button>
-                  <button
-                    className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={() => sendPrompt(`Check network status on ${selectedNetwork}`)}
-                    disabled={isProcessing}
-                  >
-                    {isProcessing ? 'Processing...' : 'Network Status'}
-                  </button>
-                  <button
-                    className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={() => sendPrompt(`Transfer 50 KAIA to 0x8Ff09c0a34184c35F86F5229d91280DfB523B59A on ${selectedNetwork}`)}
-                    disabled={isProcessing}
-                  >
-                    {isProcessing ? 'Processing...' : 'Transfer Tokens'}
-                  </button>
-                  <button
-                    className="w-full bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={() => sendPrompt(`Show yield farming opportunities on ${selectedNetwork}`)}
-                    disabled={isProcessing}
-                  >
-                    {isProcessing ? 'Processing...' : 'Yield Farming'}
-                  </button>
-                  <button
-                    className="w-full bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={() => sendPrompt(`Analyze KAIA market on ${selectedNetwork}`)}
-                    disabled={isProcessing}
-                  >
-                    {isProcessing ? 'Processing...' : 'Trade Analysis'}
-                  </button>
-                </div>
-              </div>
+              {/* Yield Farming Panel */}
+              <YieldFarmingPanel 
+                selectedNetwork={selectedNetwork}
+                onFarmSelect={handleFarmSelect}
+              />
 
               {/* API Response Display */}
               {apiResponse && (
@@ -579,38 +588,7 @@ export default function Home() {
               )}
 
               {/* Network Status */}
-              <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10">
-                <h3 className="text-lg font-semibold text-white mb-4">Network Status</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-300">Network</span>
-                    <span className={`font-semibold ${selectedNetwork === 'testnet' ? 'text-blue-400' : 'text-green-400'}`}>
-                      {selectedNetwork === 'testnet' ? 'Kaia Testnet' : 'Kaia Mainnet'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-300">Status</span>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                      <span className="text-green-400 text-sm">Connected</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-300">Chain ID</span>
-                    <span className="text-gray-300 text-sm font-mono">
-                      {selectedNetwork === 'testnet' ? '1001 (0x3e9)' : '8217 (0x2019)'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-300">RPC URL</span>
-                    <span className="text-gray-300 text-xs font-mono truncate max-w-32">
-                      {selectedNetwork === 'testnet' 
-                        ? 'public-en-kairos.node.kaia.io' 
-                        : 'public-en.node.kaia.io'}
-                    </span>
-                  </div>
-                </div>
-              </div>
+              <NetworkStatus selectedNetwork={selectedNetwork} />
             </div>
           </div>
         )}

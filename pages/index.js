@@ -29,6 +29,16 @@ const YieldFarmingPanel = dynamic(() => import('../components/YieldFarmingPanel'
   loading: () => <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 animate-pulse">Loading yield farming data...</div>
 });
 
+const TradeAnalysisPanel = dynamic(() => import('../components/TradeAnalysisPanel'), {
+  ssr: false,
+  loading: () => <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 animate-pulse">Loading trade analysis data...</div>
+});
+
+const TokenPricePanel = dynamic(() => import('../components/TokenPricePanel'), {
+  ssr: false,
+  loading: () => <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 animate-pulse">Loading token price data...</div>
+});
+
 // Add these at the top for demo addresses
 const MOCK_ERC20_ADDRESS = process.env.NEXT_PUBLIC_MOCK_ERC20_ADDRESS || '0x8C82fa4dc47a9bf5034Bb38815c843B75EF76690';
 const MOCK_YIELD_FARM_ADDRESS = process.env.NEXT_PUBLIC_MOCK_YIELD_FARM_ADDRESS || '0x27A0239D6F238c6AD5b5952d70e62081D1cc896e';
@@ -523,6 +533,16 @@ export default function Home() {
                   <div>{aiError}</div>
                 </div>
               )}
+              
+              {/* Trade Analysis Panel */}
+              <div className="mt-6">
+                <TradeAnalysisPanel selectedNetwork={selectedNetwork} />
+              </div>
+              
+              {/* Token Prices Panel */}
+              <div className="mt-6">
+                <TokenPricePanel selectedNetwork={selectedNetwork} />
+              </div>
             </div>
 
             {/* Sidebar */}

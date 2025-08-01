@@ -53,24 +53,84 @@ class KaiaYieldService {
     
     const provider = this.providers[network];
     
+    // For testnet, provide realistic mock yield farms since real farms aren't deployed yet
+    if (network === 'testnet') {
+      try {
+        // Get real blockchain data for realistic simulation
+        const blockNumber = await provider.getBlockNumber();
+        const feeData = await provider.getFeeData();
+        
+        const mockFarms = [
+          {
+            name: 'KaiaFarm KAIA-MOCK',
+            address: '0x27A0239D6F238c6AD5b5952d70e62081D1cc896e',
+            type: 'Single Asset Staking',
+            stakingToken: { symbol: 'MOCK', name: 'Mock Token' },
+            rewardToken: { symbol: 'KAIA', name: 'Kaia Token' },
+            apy: (Math.random() * 30 + 15).toFixed(2), // 15-45% APY
+            totalStaked: (Math.random() * 500000 + 100000).toFixed(2),
+            rewardRate: (Math.random() * 50 + 10).toFixed(2),
+            isActive: true
+          },
+          {
+            name: 'KaiaFarm LP Staking',
+            address: '0x0000000000000000000000000000000000000000',
+            type: 'LP Staking',
+            stakingToken: { symbol: 'LP-MOCK', name: 'Mock LP Token' },
+            rewardToken: { symbol: 'KAIA', name: 'Kaia Token' },
+            apy: (Math.random() * 40 + 20).toFixed(2), // 20-60% APY
+            totalStaked: (Math.random() * 300000 + 50000).toFixed(2),
+            rewardRate: (Math.random() * 30 + 5).toFixed(2),
+            isActive: true
+          },
+          {
+            name: 'KaiaFarm USDT Staking',
+            address: '0x0000000000000000000000000000000000000000',
+            type: 'Single Asset Staking',
+            stakingToken: { symbol: 'USDT', name: 'Tether USD' },
+            rewardToken: { symbol: 'KAIA', name: 'Kaia Token' },
+            apy: (Math.random() * 25 + 10).toFixed(2), // 10-35% APY
+            totalStaked: (Math.random() * 800000 + 200000).toFixed(2),
+            rewardRate: (Math.random() * 40 + 15).toFixed(2),
+            isActive: true
+          }
+        ];
+
+        const opportunities = mockFarms.map(farm => ({
+          name: farm.name,
+          address: farm.address,
+          type: farm.type,
+          apy: farm.apy,
+          totalStaked: farm.totalStaked,
+          rewardRate: farm.rewardRate,
+          periodFinish: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          isActive: farm.isActive,
+          stakingToken: farm.stakingToken,
+          rewardToken: farm.rewardToken,
+          network: network,
+          isReal: false,
+          isTestnet: true,
+          blockNumber: blockNumber,
+          gasPrice: ethers.formatUnits(feeData.gasPrice || 0, 'gwei')
+        }));
+
+        return {
+          success: true,
+          opportunities: opportunities,
+          network: network
+        };
+      } catch (error) {
+        console.error('Mock yield farming data generation failed:', error);
+        return {
+          success: false,
+          error: 'Failed to generate mock yield farming data',
+          network: network
+        };
+      }
+    }
+    
     // Known yield farming contracts on Kaia chain (replace with actual addresses)
     const YIELD_FARMS = {
-      testnet: [
-        {
-          name: 'KaiaFarm KAIA-MOCK',
-          address: '0x27A0239D6F238c6AD5b5952d70e62081D1cc896e',
-          stakingToken: '0x8C82fa4dc47a9bf5034Bb38815c843B75EF76690', // MOCK token
-          rewardToken: ethers.ZeroAddress, // KAIA
-          type: 'Single Asset Staking'
-        },
-        {
-          name: 'KaiaFarm LP Staking',
-          address: '0x0000000000000000000000000000000000000000', // Replace with actual LP farm
-          stakingToken: '0x0000000000000000000000000000000000000000', // LP token
-          rewardToken: ethers.ZeroAddress, // KAIA
-          type: 'LP Staking'
-        }
-      ],
       mainnet: [
         // Add mainnet yield farms here
       ]
@@ -126,21 +186,11 @@ class KaiaYieldService {
 
       } catch (error) {
         console.error(`Failed to get data for farm ${farm.name}:`, error);
-        // Add mock data for unavailable farms
-        opportunities.push({
-          name: farm.name,
-          address: farm.address,
-          type: farm.type,
-          apy: (Math.random() * 50 + 10).toFixed(2), // 10-60% APY
-          totalStaked: (Math.random() * 1000000 + 100000).toFixed(2),
-          rewardRate: (Math.random() * 100 + 10).toFixed(2),
-          periodFinish: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          isActive: true,
-          stakingToken: { symbol: 'MOCK', name: 'Mock Token' },
-          rewardToken: { symbol: 'KAIA', name: 'Kaia Token' },
-          network: network,
-          isReal: false
-        });
+        return {
+          success: false,
+          error: `Failed to get data for farm ${farm.name}: ${error.message}`,
+          network: network
+        };
       }
     }
 

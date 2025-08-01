@@ -1373,100 +1373,40 @@ class KaiaAgentService {
     return await this.testnetProvider.getTransactionReceipt(txHash); // Default to testnet for now
   }
 
-  // Enhanced swap method using real on-chain data
+  // Legacy swap method - now uses dedicated DEX service
   async swapTokensOnChain(amountIn, tokenInAddress, tokenOutAddress, userAddress, network = 'testnet') {
-    await this.initialize();
+    console.warn('swapTokensOnChain is deprecated. Use KaiaDexService instead.');
     
-    try {
-      const provider = network === 'mainnet' ? this.mainnetProvider : this.testnetProvider;
-      
-      // Get real on-chain data
-      const blockNumber = await provider.getBlockNumber();
-      const feeData = await provider.getFeeData();
-      const gasPrice = feeData.gasPrice;
-      
-      // Get real balance data for validation
-      let userBalance = '0';
-      try {
-        if (tokenInAddress === ethers.ZeroAddress) {
-          // Native KAIA balance
-          userBalance = await provider.getBalance(userAddress);
-          userBalance = ethers.formatEther(userBalance);
-        } else {
-          // Token balance
-          const tokenContract = new ethers.Contract(tokenInAddress, [
-            'function balanceOf(address) view returns (uint256)',
-            'function decimals() view returns (uint8)',
-            'function symbol() view returns (string)'
-          ], provider);
-          const balance = await tokenContract.balanceOf(userAddress);
-          const decimals = await tokenContract.decimals();
-          userBalance = ethers.formatUnits(balance, decimals);
-        }
-      } catch (balanceError) {
-        console.log('Could not fetch real balance, using simulation');
-      }
-      
-      // Validate sufficient balance
-      if (parseFloat(userBalance) < parseFloat(amountIn)) {
-        return {
-          success: false,
-          error: `Insufficient balance. You have ${userBalance} ${tokenInAddress === ethers.ZeroAddress ? 'KAIA' : 'tokens'} but need ${amountIn}`,
-          network: network
-        };
-      }
-      
-      // Simulate realistic swap based on on-chain data
-      const mockRate = tokenInAddress === ethers.ZeroAddress ? 0.85 : 1.18; // KAIA to MOCK rate
-      const mockAmountOut = amountIn * mockRate;
-      const mockSlippage = 0.5; // 0.5% slippage
-      
-      // Generate realistic transaction hash based on block number
-      const mockTxHash = `0x${blockNumber.toString(16).padStart(8, '0')}${Math.random().toString(16).substring(2, 58)}`;
-      
-      // Calculate realistic gas usage based on transaction type
-      const baseGas = 21000; // Base transaction gas
-      const tokenTransferGas = 65000; // ERC20 transfer gas
-      const swapGas = tokenInAddress === ethers.ZeroAddress ? baseGas + 50000 : tokenTransferGas + 80000;
-      const gasUsed = swapGas + Math.floor(Math.random() * 20000);
-      
-      return {
-        success: true,
-        quote: {
-          amountIn: amountIn,
-          amountOut: mockAmountOut.toFixed(6),
-          amountOutMin: (mockAmountOut * (1 - mockSlippage / 100)).toFixed(6),
-          path: [tokenInAddress, tokenOutAddress],
-          network: network,
-          isMock: true,
-          rate: mockRate,
-          slippage: mockSlippage,
-          gasPrice: ethers.formatUnits(gasPrice || 0, 'gwei')
-        },
-        swap: {
-          transactionHash: mockTxHash,
-          gasUsed: gasUsed,
-          blockNumber: blockNumber,
-          network: network,
-          isMock: true,
-          gasPrice: ethers.formatUnits(gasPrice || 0, 'gwei')
-        },
-        network: network,
-        isMock: true,
-        realData: {
-          blockNumber: blockNumber,
-          gasPrice: ethers.formatUnits(gasPrice || 0, 'gwei'),
-          userBalance: userBalance
-        }
-      };
-    } catch (error) {
-      console.error('On-chain swap simulation failed:', error);
-      return {
-        success: false,
-        error: error.message,
-        network: network
-      };
+    // Import and use the dedicated DEX service
+    const KaiaDexService = (await import('./kaiaDex.js')).default;
+    const dexService = new KaiaDexService();
+    await dexService.initialize();
+    
+    const quoteResult = await dexService.getBestSwapQuote(amountIn, tokenInAddress, tokenOutAddress, network);
+    
+    if (!quoteResult.success) {
+      return quoteResult;
     }
+    
+    // Simulate execution for backward compatibility
+    const swapResult = await dexService.executeSwap(
+      quoteResult.bestQuote.dex,
+      amountIn,
+      quoteResult.bestQuote.amountOutMin,
+      tokenInAddress,
+      tokenOutAddress,
+      userAddress,
+      null, // No signer for simulation
+      network
+    );
+    
+    return {
+      success: true,
+      quote: quoteResult.bestQuote,
+      swap: swapResult,
+      network: network,
+      isMock: !swapResult.isReal
+    };
   }
 
   // Get available tokens for swapping

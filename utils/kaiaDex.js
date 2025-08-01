@@ -82,6 +82,15 @@ class KaiaDexService {
   async getAvailableDexes(network = 'testnet') {
     await this.initialize();
     
+    // For testnet, return mock DEXes since real DEXes aren't deployed yet
+    if (network === 'testnet') {
+      return [
+        'KaiaSwap',
+        'DragonSwap', 
+        'KaiaDex'
+      ];
+    }
+    
     const availableDexes = [];
     for (const [dexName, router] of Object.entries(this.routers[network] || {})) {
       if (router) {
@@ -102,6 +111,56 @@ class KaiaDexService {
   async getSwapQuote(dexName, amountIn, tokenInAddress, tokenOutAddress, network = 'testnet') {
     await this.initialize();
     
+    // For testnet, provide realistic mock quotes since real DEXes aren't deployed
+    if (network === 'testnet') {
+      try {
+        const provider = this.providers[network];
+        
+        // Get real blockchain data for realistic simulation
+        const blockNumber = await provider.getBlockNumber();
+        const feeData = await provider.getFeeData();
+        
+        // Simulate realistic swap rates based on token pairs
+        let mockRate;
+        if (tokenInAddress === ethers.ZeroAddress && tokenOutAddress !== ethers.ZeroAddress) {
+          // KAIA to Token
+          mockRate = 0.85 + (Math.random() * 0.3); // 0.85 - 1.15
+        } else if (tokenInAddress !== ethers.ZeroAddress && tokenOutAddress === ethers.ZeroAddress) {
+          // Token to KAIA
+          mockRate = 1.15 + (Math.random() * 0.3); // 1.15 - 1.45
+        } else {
+          // Token to Token
+          mockRate = 0.95 + (Math.random() * 0.2); // 0.95 - 1.15
+        }
+        
+        const mockAmountOut = amountIn * mockRate;
+        const mockSlippage = 0.5 + (Math.random() * 1); // 0.5% - 1.5% slippage
+        
+        return {
+          success: true,
+          dex: dexName,
+          amountIn: amountIn,
+          amountOut: mockAmountOut.toFixed(6),
+          amountOutMin: (mockAmountOut * (1 - mockSlippage / 100)).toFixed(6),
+          path: [tokenInAddress, tokenOutAddress],
+          network: network,
+          isReal: false,
+          isTestnet: true,
+          blockNumber: blockNumber,
+          gasPrice: ethers.formatUnits(feeData.gasPrice || 0, 'gwei')
+        };
+      } catch (error) {
+        console.error(`Mock quote generation failed for ${dexName}:`, error);
+        return {
+          success: false,
+          error: 'Failed to generate mock quote',
+          dex: dexName,
+          network: network
+        };
+      }
+    }
+    
+    // For mainnet, use real DEX contracts
     const router = this.routers[network]?.[dexName];
     if (!router) {
       throw new Error(`DEX ${dexName} not available on ${network}`);
@@ -142,6 +201,47 @@ class KaiaDexService {
   async executeSwap(dexName, amountIn, amountOutMin, tokenInAddress, tokenOutAddress, userAddress, signer, network = 'testnet') {
     await this.initialize();
     
+    // For testnet, simulate swap execution since real DEXes aren't deployed
+    if (network === 'testnet') {
+      try {
+        const provider = this.providers[network];
+        
+        // Get real blockchain data for realistic simulation
+        const blockNumber = await provider.getBlockNumber();
+        const feeData = await provider.getFeeData();
+        
+        // Generate realistic transaction hash based on block number
+        const mockTxHash = `0x${blockNumber.toString(16).padStart(8, '0')}${Math.random().toString(16).substring(2, 58)}`;
+        
+        // Calculate realistic gas usage based on transaction type
+        const baseGas = 21000; // Base transaction gas
+        const tokenTransferGas = 65000; // ERC20 transfer gas
+        const swapGas = tokenInAddress === ethers.ZeroAddress ? baseGas + 50000 : tokenTransferGas + 80000;
+        const gasUsed = swapGas + Math.floor(Math.random() * 20000);
+        
+        return {
+          success: true,
+          dex: dexName,
+          transactionHash: mockTxHash,
+          gasUsed: gasUsed.toString(),
+          blockNumber: blockNumber,
+          network: network,
+          isReal: false,
+          isTestnet: true,
+          gasPrice: ethers.formatUnits(feeData.gasPrice || 0, 'gwei')
+        };
+      } catch (error) {
+        console.error(`Mock swap execution failed for ${dexName}:`, error);
+        return {
+          success: false,
+          error: 'Failed to simulate swap execution',
+          dex: dexName,
+          network: network
+        };
+      }
+    }
+    
+    // For mainnet, use real DEX contracts
     const router = this.routers[network]?.[dexName];
     if (!router) {
       throw new Error(`DEX ${dexName} not available on ${network}`);

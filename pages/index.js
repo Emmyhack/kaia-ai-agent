@@ -162,6 +162,7 @@ export default function Home() {
         prompt: prompt,
         userAddress: walletAddress,
         network: selectedNetwork,
+
       }),
     })
     .then(response => response.json())

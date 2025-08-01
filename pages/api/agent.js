@@ -209,6 +209,11 @@ const handler = async (req, res) => {
           tokenAddress = KAIA_TOKENS[network].USDC;
         }
         
+        // For transfer operations, we need a signer
+        // Since we can't pass the provider object in JSON, we'll use a different approach
+        // The signer will be initialized when the user is connected to a wallet
+        await kaiaAgentService.initialize();
+        
         const transferResult = await kaiaAgentService.transferTokens(
           tokenAddress,
           userAddress,
@@ -233,11 +238,21 @@ const handler = async (req, res) => {
             transferData: transferResult
           });
         } else {
-          return res.status(200).json({
-            response: `❌ **Transfer Failed**\n\n**Error:** ${transferResult.error}\n\nPlease check your balance and try again.`,
-            success: false,
-            error: transferResult.error
-          });
+          // Check if the error is about wallet connection
+          if (transferResult.error.includes('Wallet not connected')) {
+            return res.status(200).json({
+              response: `❌ **Wallet Not Connected**\n\n**Error:** ${transferResult.error}\n\n💡 **Solution:** Please connect your wallet first using the wallet connection button above, then try the transfer again.`,
+              success: false,
+              error: transferResult.error,
+              requiresWalletConnection: true
+            });
+          } else {
+            return res.status(200).json({
+              response: `❌ **Transfer Failed**\n\n**Error:** ${transferResult.error}\n\nPlease check your balance and try again.`,
+              success: false,
+              error: transferResult.error
+            });
+          }
         }
       } catch (error) {
         console.error('Token transfer error:', error);

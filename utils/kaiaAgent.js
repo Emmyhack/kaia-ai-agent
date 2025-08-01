@@ -852,8 +852,8 @@ class KaiaAgentService {
     this.initialized = false;
   }
 
-  async initialize() {
-    if (this.initialized) return;
+  async initialize(externalSigner = null) {
+    if (this.initialized && !externalSigner) return;
 
     try {
       // Initialize testnet provider
@@ -862,9 +862,15 @@ class KaiaAgentService {
       // Initialize mainnet provider
       this.mainnetProvider = new ethers.JsonRpcProvider(NETWORKS.mainnet.rpcUrl);
       
-      // Initialize signer if private key is available
-      if (process.env.KAIA_PRIVATE_KEY) {
+      // Use external signer if provided (from connected wallet), otherwise use private key
+      if (externalSigner) {
+        this.signer = externalSigner;
+        console.log('Using external signer from connected wallet');
+      } else if (process.env.KAIA_PRIVATE_KEY) {
         this.signer = new ethers.Wallet(process.env.KAIA_PRIVATE_KEY, this.testnetProvider);
+        console.log('Using private key signer');
+      } else {
+        console.log('No signer available - read-only mode');
       }
       
       // Initialize contracts
@@ -1470,7 +1476,7 @@ class KaiaAgentService {
     
     try {
       if (!this.signer) {
-        throw new Error('Signer not initialized for transfers');
+        throw new Error('Wallet not connected. Please connect your wallet to perform transfers.');
       }
 
       const provider = network === 'mainnet' ? this.mainnetProvider : this.testnetProvider;
@@ -1593,7 +1599,7 @@ class KaiaAgentService {
     
     try {
       if (!this.signer) {
-        throw new Error('Signer not initialized for farming');
+        throw new Error('Wallet not connected. Please connect your wallet to perform farming operations.');
       }
 
       // Mock farm contract interaction (in real implementation, this would interact with actual farm contracts)

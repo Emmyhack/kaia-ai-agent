@@ -1,10 +1,10 @@
 import { useAccount, useConnect, useDisconnect, useNetwork, useSwitchNetwork } from 'wagmi';
-import { useWeb3Modal } from '@web3modal/wagmi/react';
+import { useAppKit } from '@reown/appkit/react';
 import { useEffect, useState } from 'react';
 import { Wallet, ChevronDown, X, RefreshCw, Settings, ExternalLink } from 'lucide-react';
 
 const Web3ModalWalletConnection = ({ onConnect, onDisconnect, onNetworkChange }) => {
-  const { open } = useWeb3Modal();
+  const { open } = useAppKit();
   const { address, isConnected, connector } = useAccount();
   const { connect, connectors, isLoading, pendingConnector } = useConnect();
   const { disconnect } = useDisconnect();

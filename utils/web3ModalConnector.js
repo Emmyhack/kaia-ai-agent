@@ -1,7 +1,7 @@
-import { createConfig, configureChains, mainnet } from 'wagmi';
-import { publicProvider } from 'wagmi/providers/public';
-import { createWeb3Modal } from '@web3modal/wagmi/react';
-import { walletConnectProvider, EIP6963Connector, injected, coinbaseWallet } from '@web3modal/wagmi';
+import { createConfig, http } from 'wagmi';
+import { mainnet } from 'wagmi/chains';
+import { createAppKit } from '@reown/appkit';
+import { walletConnect, injected, coinbaseWallet } from '@reown/appkit/wagmi';
 import { KaiaWalletConnector } from './kaiaWalletConnector';
 
 // Kaia Chain configurations
@@ -43,15 +43,6 @@ const kaiaMainnet = {
   testnet: false,
 };
 
-// Configure chains & providers
-const { chains, publicClient, webSocketPublicClient } = configureChains(
-  [kaiaTestnet, kaiaMainnet, mainnet],
-  [
-    walletConnectProvider({ projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'YOUR_PROJECT_ID' }),
-    publicProvider(),
-  ]
-);
-
 // Set up wagmi config
 const metadata = {
   name: 'Kaia AI Agent',
@@ -61,19 +52,22 @@ const metadata = {
 };
 
 const config = createConfig({
-  autoConnect: true,
+  chains: [kaiaTestnet, kaiaMainnet, mainnet],
   connectors: [
-    EIP6963Connector({ chains }),
-    injected({ shimDisconnect: true }),
-    coinbaseWallet({ appName: metadata.name, chains }),
-    KaiaWalletConnector({ chains }),
+    injected(),
+    coinbaseWallet({ appName: metadata.name }),
+    walletConnect({ projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'YOUR_PROJECT_ID' }),
+    KaiaWalletConnector({ chains: [kaiaTestnet, kaiaMainnet, mainnet] }),
   ],
-  publicClient,
-  webSocketPublicClient,
+  transports: {
+    [kaiaTestnet.id]: http(),
+    [kaiaMainnet.id]: http(),
+    [mainnet.id]: http(),
+  },
 });
 
-// Initialize Web3Modal
-createWeb3Modal({
+// Initialize AppKit
+createAppKit({
   wagmiConfig: config,
   projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'YOUR_PROJECT_ID',
   metadata,
@@ -93,4 +87,4 @@ createWeb3Modal({
   defaultChain: kaiaTestnet,
 });
 
-export { config, chains, kaiaTestnet, kaiaMainnet };
+export { config, kaiaTestnet, kaiaMainnet };

@@ -843,6 +843,9 @@ const NETWORKS = {
   }
 };
 
+// DragonSwap service instance
+let dragonSwapService = null;
+
 class KaiaAgentService {
   constructor() {
     this.testnetProvider = null;
@@ -886,8 +889,15 @@ class KaiaAgentService {
       }
       
       // Initialize DragonSwap service
-      dragonSwapService = new DragonSwapService();
-      await dragonSwapService.initialize();
+      try {
+        dragonSwapService = new DragonSwapService();
+        await dragonSwapService.initialize();
+        console.log('DragonSwap service initialized successfully');
+      } catch (dragonSwapError) {
+        console.warn('DragonSwap service initialization failed:', dragonSwapError);
+        console.warn('Continuing without DragonSwap integration');
+        dragonSwapService = null;
+      }
       
       this.initialized = true;
       console.log('KaiaAgentService initialized with real blockchain connections and DragonSwap integration');
@@ -2117,6 +2127,16 @@ class KaiaAgentService {
 
 // Create singleton instance
 const kaiaAgentService = new KaiaAgentService();
+
+// Initialize the service
+(async () => {
+  try {
+    await kaiaAgentService.initialize();
+    console.log('KaiaAgentService singleton initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize KaiaAgentService singleton:', error);
+  }
+})();
 
 // Export utility functions
 export const formatKaia = (amount) => {

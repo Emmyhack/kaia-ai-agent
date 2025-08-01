@@ -37,7 +37,7 @@ An intelligent AI agent that enables natural language interaction with the Kaia 
 #### 🔗 **Enhanced Blockchain Integration**
 - **Multi-Network Support**: Seamless switching between Kaia Testnet and Mainnet
 - **Real Blockchain Queries**: Live balance checking and network status from actual blockchain
-- **DragonSwap Integration**: Smart contract integration with conditional protocol references
+- **Simple Swap Implementation**: Mock token swapping for demonstration purposes
 - **Optimized Transaction Handling**: Improved gas estimation and transaction monitoring
 
 #### 🏗️ **Architecture Improvements**
@@ -56,7 +56,7 @@ An intelligent AI agent that enables natural language interaction with the Kaia 
 - **Real-time Feedback**: Individual processing states for better user experience
 
 ### 💰 DeFi Operations
-- **Token Swapping**: Swap between any tokens and KAIA with DragonSwap integration
+- **Token Swapping**: Mock token swapping functionality for demonstration
 - **Balance Checking**: Real-time balance monitoring across multiple tokens and networks
 - **Token Sending**: Send KAIA tokens to any address with transaction tracking
 - **Yield Farming**: Deposit/withdraw from yield farms with analytics
@@ -307,7 +307,7 @@ interface KaiaAgentArchitecture {
   
   blockchain: {
     networks: ['Kaia Testnet', 'Kaia Mainnet'];
-    protocols: ['DragonSwap', 'Custom Contracts'];
+    protocols: ['Custom Contracts', 'Mock Implementations'];
     security: ['ReentrancyGuard', 'Pausable', 'Ownable'];
   };
 }

@@ -130,94 +130,60 @@ export default async function handler(req, res) {
       }
     }
 
-    // Enhanced swap detection with DragonSwap support
+    // Simple swap functionality (mock implementation)
     if (prompt.toLowerCase().includes('swap') || prompt.toLowerCase().includes('exchange')) {
       try {
         // Extract swap parameters from prompt
         const swapMatch = prompt.match(/(\d+(?:\.\d+)?)\s*(KAIA|ETH|MOCK|USDT|USDC|token)/i);
         const amount = swapMatch ? parseFloat(swapMatch[1]) : 10;
         
-        // Determine token addresses based on prompt
-        let tokenIn, tokenOut;
+        // Determine tokens based on prompt
         const lowerPrompt = prompt.toLowerCase();
+        let tokenInSymbol, tokenOutSymbol;
         
         if (lowerPrompt.includes('kaia') && lowerPrompt.includes('mock')) {
-          tokenIn = ethers.ZeroAddress; // KAIA
-          tokenOut = KAIA_TOKENS[network].MOCK; // Mock token
+          tokenInSymbol = 'KAIA';
+          tokenOutSymbol = 'MOCK';
         } else if (lowerPrompt.includes('mock') && lowerPrompt.includes('kaia')) {
-          tokenIn = KAIA_TOKENS[network].MOCK; // Mock token
-          tokenOut = ethers.ZeroAddress; // KAIA
-        } else if (lowerPrompt.includes('kaia') && lowerPrompt.includes('usdt')) {
-          tokenIn = ethers.ZeroAddress; // KAIA
-          tokenOut = KAIA_TOKENS[network].USDT; // USDT
-        } else if (lowerPrompt.includes('usdt') && lowerPrompt.includes('kaia')) {
-          tokenIn = KAIA_TOKENS[network].USDT; // USDT
-          tokenOut = ethers.ZeroAddress; // KAIA
+          tokenInSymbol = 'MOCK';
+          tokenOutSymbol = 'KAIA';
         } else {
           // Default: KAIA to Mock
-          tokenIn = ethers.ZeroAddress;
-          tokenOut = KAIA_TOKENS[network].MOCK;
+          tokenInSymbol = 'KAIA';
+          tokenOutSymbol = 'MOCK';
         }
         
-        // Check if tokens are available
-        if (tokenIn !== ethers.ZeroAddress && tokenIn === '0x0000000000000000000000000000000000000000') {
-          return res.status(200).json({
-            response: `❌ **Token Not Available**\n\n**Error:** Input token is not available on ${network}\n\nAvailable tokens: KAIA (native), MOCK`,
-            success: false,
-            error: 'Token not available'
-          });
-        }
+        // Calculate mock output amount (simple 1:1 ratio for demo)
+        const amountOut = (amount * 0.95).toFixed(4); // 5% slippage simulation
+        const mockTxHash = `0x${Math.random().toString(16).substr(2, 64)}`;
+        const mockGasUsed = Math.floor(Math.random() * 100000) + 50000;
         
-        if (tokenOut !== ethers.ZeroAddress && tokenOut === '0x0000000000000000000000000000000000000000') {
-          return res.status(200).json({
-            response: `❌ **Token Not Available**\n\n**Error:** Output token is not available on ${network}\n\nAvailable tokens: KAIA (native), MOCK`,
-            success: false,
-            error: 'Token not available'
-          });
-        }
+        const response = `🔄 **Swap Transaction Successful (Demo Mode)!**\n\n` +
+          `**Network:** ${network === 'testnet' ? 'Kaia Testnet' : 'Kaia Mainnet'}\n` +
+          `**Amount In:** ${amount} ${tokenInSymbol}\n` +
+          `**Amount Out:** ${amountOut} ${tokenOutSymbol}\n` +
+          `**Transaction Hash:** \`${mockTxHash}\`\n` +
+          `**Gas Used:** ${mockGasUsed}\n` +
+          `**Demo Mode:** Simulated swap for testing\n` +
+          `\n✅ Swap executed successfully!`;
         
-        // Use DragonSwap for real swaps
-        const swapResult = await kaiaAgentService.swapTokensWithDragonSwap(
-          amount,
-          tokenIn,
-          tokenOut,
-          userAddress,
-          network
-        );
-        
-        if (swapResult.success) {
-          const tokenInSymbol = tokenIn === ethers.ZeroAddress ? 'KAIA' : 'MOCK';
-          const tokenOutSymbol = tokenOut === ethers.ZeroAddress ? 'KAIA' : 'MOCK';
-          
-          const isMock = swapResult.quote?.isMock || swapResult.swap?.isMock;
-          const mockIndicator = isMock ? ' (Demo Mode)' : '';
-          
-          const response = `🔄 **Swap Transaction Successful${mockIndicator}!**\n\n` +
-            `**Network:** ${network === 'testnet' ? 'Kaia Testnet' : 'Kaia Mainnet'}\n` +
-            `**Amount In:** ${amount} ${tokenInSymbol}\n` +
-            `**Amount Out:** ${swapResult.quote.amountOut} ${tokenOutSymbol}\n` +
-            `**Transaction Hash:** \`${swapResult.swap.transactionHash}\`\n` +
-            `**Gas Used:** ${swapResult.swap.gasUsed}\n` +
-            (isMock ? `**Demo Mode:** Simulated swap for testing\n` : '') +
-            `\n✅ Swap executed successfully!${lowerPrompt.includes('dragonswap') ? ' (via DragonSwap)' : ''}`;
-          
-          return res.status(200).json({
-            response: response,
-            success: true,
-            swapData: swapResult,
-            isMock: isMock
-          });
-        } else {
-          return res.status(200).json({
-            response: `❌ **Swap Failed**\n\n**Error:** ${swapResult.error}\n\nPlease try again or check your token balance and allowances.`,
-            success: false,
-            error: swapResult.error
-          });
-        }
+        return res.status(200).json({
+          response: response,
+          success: true,
+          isMock: true,
+          swapData: {
+            amountIn: amount,
+            amountOut: amountOut,
+            tokenInSymbol,
+            tokenOutSymbol,
+            transactionHash: mockTxHash,
+            gasUsed: mockGasUsed
+          }
+        });
       } catch (error) {
         console.error('Swap error:', error);
         return res.status(200).json({
-          response: `❌ **Swap Error**\n\n**Error:** ${error.message}\n\nPlease ensure you have sufficient balance and try again.`,
+          response: `❌ **Swap Error**\n\n**Error:** ${error.message}\n\nPlease try again.`,
           success: false,
           error: error.message
         });

@@ -10,6 +10,8 @@
     "lint": "next lint",
     "test": "jest",
     "test:watch": "jest --watch",
+    "test:hardhat": "npx hardhat test",
+    "test:coverage": "jest --coverage",
     "deploy:contracts": "npx hardhat run scripts/deploy.js --network kaia",
     "deploy:contracts:testnet": "npx hardhat run scripts/deploy.js --network kaia-testnet",
     "deploy:mocks": "npx hardhat run scripts/deploy-mocks.js --network kaia",
@@ -49,7 +51,8 @@
     "eslint": "^8.0.0",
     "eslint-config-next": "^14.0.0",
     "hardhat": "^2.19.0",
-    "jest": "^29.0.0"
+    "jest": "^29.0.0",
+    "jest-environment-jsdom": "^30.0.5"
   },
   "repository": {
     "type": "git",

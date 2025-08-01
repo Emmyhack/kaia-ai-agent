@@ -486,6 +486,36 @@ if (lowerPrompt.includes('new feature')) {
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+## 👥 Contributors
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/your-username">
+        <img src="https://github.com/your-username.png" width="100px;" alt=""/>
+        <br />
+        <sub><b>Your Name</b></sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="mailto:aigbojie2020@gmail.com">
+        <img src="https://github.com/github.png" width="100px;" alt=""/>
+        <br />
+        <sub><b>Contributor 1</b></sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="mailto:hengjunkai@gmail.com">
+        <img src="https://github.com/github.png" width="100px;" alt=""/>
+        <br />
+        <sub><b>Contributor 2</b></sub>
+      </a>
+    </td>
+  </tr>
+</table>
+
+📋 **See [CONTRIBUTORS.md](CONTRIBUTORS.md) for detailed contributor information and guidelines.**
+
 ## 🙏 Acknowledgments
 
 - **Kaia Network**: For the blockchain infrastructure

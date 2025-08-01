@@ -37,11 +37,30 @@ const ChatInterface = forwardRef(function ChatInterface({ walletAddress, isWalle
   const handleSubmit = async (e, overridePrompt, network) => {
     e.preventDefault();
     const prompt = overridePrompt !== undefined ? overridePrompt : inputValue;
-    if (!prompt.trim()) return;
+    
+    // Input validation and sanitization
+    if (!prompt || !prompt.trim()) {
+      toast.error('Please enter a valid message');
+      return;
+    }
+    
+    // Sanitize input to prevent XSS
+    const sanitizedPrompt = prompt.trim().substring(0, 1000); // Limit length
+    
+    if (sanitizedPrompt !== prompt.trim()) {
+      toast.error('Message too long. Please keep it under 1000 characters.');
+      return;
+    }
     
     // Allow testing without wallet connection in test mode
     if (!isWalletConnected && !testMode) {
       toast.error('Please connect your wallet first');
+      return;
+    }
+    
+    // Prevent multiple simultaneous requests
+    if (isLoading) {
+      toast.error('Please wait for the current request to complete');
       return;
     }
     
@@ -53,7 +72,7 @@ const ChatInterface = forwardRef(function ChatInterface({ walletAddress, isWalle
     const userMessage = {
       id: Date.now(),
       type: 'user',
-      content: prompt,
+      content: sanitizedPrompt,
       timestamp: new Date().toISOString(),
     };
     setMessages(prev => [...prev, userMessage]);
@@ -72,7 +91,7 @@ const ChatInterface = forwardRef(function ChatInterface({ walletAddress, isWalle
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          prompt,
+          prompt: sanitizedPrompt,
           userAddress: walletAddress,
           network: network, // Pass the network parameter
         }),

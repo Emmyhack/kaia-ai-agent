@@ -1,5 +1,7 @@
 import kaiaAgentService from '../../utils/kaiaAgent.js';
 import { ethers } from 'ethers';
+import { rateLimitMiddleware } from '../../utils/rateLimiter.js';
+import { validation } from '../../utils/validation.js';
 
 // Import token addresses from kaiaAgent
 const KAIA_TOKENS = {
@@ -16,16 +18,24 @@ const KAIA_TOKENS = {
   }
 };
 
-export default async function handler(req, res) {
+const handler = async (req, res) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { prompt, userAddress, network = 'testnet' } = req.body;
-
-  if (!prompt) {
-    return res.status(400).json({ error: 'Prompt is required' });
+  // Validate request body
+  const validationResult = validation.validateApiRequest(req.body);
+  
+  if (!validationResult.valid) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid request data',
+      details: validationResult.errors.join(', '),
+      response: `❌ **Validation Error**\n\nPlease check your input:\n\n${validationResult.errors.map(err => `• ${err}`).join('\n')}`
+    });
   }
+  
+  const { prompt, userAddress, network } = validationResult.sanitizedData;
 
   try {
     console.log('Processing request:', { prompt, userAddress, network });
@@ -462,10 +472,14 @@ export default async function handler(req, res) {
     console.error('AI Agent Error:', error);
     console.error('Error stack:', error.stack);
     
+    // Consistent error response format
     return res.status(500).json({
+      success: false,
       error: 'Failed to process request',
       details: error.message,
-      success: false,
+      response: `❌ **System Error**\n\nAn unexpected error occurred while processing your request. Please try again or contact support if the problem persists.\n\n**Error:** ${error.message}`,
     });
   }
-}
+};
+
+export default rateLimitMiddleware(handler);

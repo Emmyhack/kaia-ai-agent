@@ -19,6 +19,11 @@ const AgentStats = dynamic(() => import('../components/AgentStats'), {
   loading: () => <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 animate-pulse">Loading agent stats...</div>
 });
 
+const NetworkStatus = dynamic(() => import('../components/NetworkStatus'), {
+  ssr: false,
+  loading: () => <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 animate-pulse">Loading network status...</div>
+});
+
 // Add these at the top for demo addresses
 const MOCK_ERC20_ADDRESS = process.env.NEXT_PUBLIC_MOCK_ERC20_ADDRESS || '0x8C82fa4dc47a9bf5034Bb38815c843B75EF76690';
 const MOCK_YIELD_FARM_ADDRESS = process.env.NEXT_PUBLIC_MOCK_YIELD_FARM_ADDRESS || '0x27A0239D6F238c6AD5b5952d70e62081D1cc896e';
@@ -319,39 +324,51 @@ export default function Home() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
-    if (window.ethereum || window.kaia || window.kaiaWallet) {
-      const handleChainChanged = (chainId) => {
-        const chainIdToNetwork = {
-          '0x3e9': 'testnet',    // 1001
-          '0x2019': 'mainnet'    // 8217
-        };
-        
-        const newNetwork = chainIdToNetwork[chainId];
-        if (newNetwork && newNetwork !== selectedNetwork) {
-          setSelectedNetwork(newNetwork);
-          toast.success(`Wallet switched to ${newNetwork === 'testnet' ? 'Kaia Testnet' : 'Kaia Mainnet'}`);
-        }
+    const handleChainChanged = (chainId) => {
+      const chainIdToNetwork = {
+        '0x3e9': 'testnet',    // 1001
+        '0x2019': 'mainnet'    // 8217
       };
+      
+      const newNetwork = chainIdToNetwork[chainId];
+      if (newNetwork && newNetwork !== selectedNetwork) {
+        setSelectedNetwork(newNetwork);
+        toast.success(`Wallet switched to ${newNetwork === 'testnet' ? 'Kaia Testnet' : 'Kaia Mainnet'}`);
+      }
+    };
 
+    const cleanupListeners = () => {
       if (window.ethereum) {
-        window.ethereum.on('chainChanged', handleChainChanged);
+        window.ethereum.removeListener('chainChanged', handleChainChanged);
+        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
       }
       if (window.kaia || window.kaiaWallet) {
         const kaiaProvider = window.kaia || window.kaiaWallet;
-        kaiaProvider.on('chainChanged', handleChainChanged);
+        kaiaProvider.removeListener('chainChanged', handleChainChanged);
+        kaiaProvider.removeListener('accountsChanged', handleAccountsChanged);
       }
+    };
 
-      return () => {
-        if (window.ethereum) {
-          window.ethereum.removeListener('chainChanged', handleChainChanged);
-        }
-        if (window.kaia || window.kaiaWallet) {
-          const kaiaProvider = window.kaia || window.kaiaWallet;
-          kaiaProvider.removeListener('chainChanged', handleChainChanged);
-        }
-      };
+    const handleAccountsChanged = (accounts) => {
+      if (accounts.length === 0) {
+        handleWalletDisconnect();
+      } else if (accounts[0] !== walletAddress) {
+        handleWalletConnect(accounts[0]);
+      }
+    };
+
+    if (window.ethereum) {
+      window.ethereum.on('chainChanged', handleChainChanged);
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
     }
-  }, [selectedNetwork]);
+    if (window.kaia || window.kaiaWallet) {
+      const kaiaProvider = window.kaia || window.kaiaWallet;
+      kaiaProvider.on('chainChanged', handleChainChanged);
+      kaiaProvider.on('accountsChanged', handleAccountsChanged);
+    }
+
+    return cleanupListeners;
+  }, [selectedNetwork, walletAddress]);
 
   // Check network when wallet connects
   useEffect(() => {
@@ -579,38 +596,7 @@ export default function Home() {
               )}
 
               {/* Network Status */}
-              <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10">
-                <h3 className="text-lg font-semibold text-white mb-4">Network Status</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-300">Network</span>
-                    <span className={`font-semibold ${selectedNetwork === 'testnet' ? 'text-blue-400' : 'text-green-400'}`}>
-                      {selectedNetwork === 'testnet' ? 'Kaia Testnet' : 'Kaia Mainnet'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-300">Status</span>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                      <span className="text-green-400 text-sm">Connected</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-300">Chain ID</span>
-                    <span className="text-gray-300 text-sm font-mono">
-                      {selectedNetwork === 'testnet' ? '1001 (0x3e9)' : '8217 (0x2019)'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-300">RPC URL</span>
-                    <span className="text-gray-300 text-xs font-mono truncate max-w-32">
-                      {selectedNetwork === 'testnet' 
-                        ? 'public-en-kairos.node.kaia.io' 
-                        : 'public-en.node.kaia.io'}
-                    </span>
-                  </div>
-                </div>
-              </div>
+              <NetworkStatus selectedNetwork={selectedNetwork} />
             </div>
           </div>
         )}

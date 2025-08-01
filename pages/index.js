@@ -24,6 +24,11 @@ const NetworkStatus = dynamic(() => import('../components/NetworkStatus'), {
   loading: () => <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 animate-pulse">Loading network status...</div>
 });
 
+const YieldFarmingPanel = dynamic(() => import('../components/YieldFarmingPanel'), {
+  ssr: false,
+  loading: () => <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10 animate-pulse">Loading yield farming data...</div>
+});
+
 // Add these at the top for demo addresses
 const MOCK_ERC20_ADDRESS = process.env.NEXT_PUBLIC_MOCK_ERC20_ADDRESS || '0x8C82fa4dc47a9bf5034Bb38815c843B75EF76690';
 const MOCK_YIELD_FARM_ADDRESS = process.env.NEXT_PUBLIC_MOCK_YIELD_FARM_ADDRESS || '0x27A0239D6F238c6AD5b5952d70e62081D1cc896e';
@@ -120,6 +125,12 @@ export default function Home() {
   const handleNetworkChange = (network) => {
     console.log('Network changed to:', network);
     setSelectedNetwork(network);
+  };
+
+  const handleFarmSelect = (farm) => {
+    console.log('Farm selected:', farm);
+    const prompt = `Show detailed information for ${farm.name} yield farm on ${selectedNetwork}`;
+    sendPrompt(prompt);
   };
 
   // Function to send a prompt to the chat bot programmatically
@@ -522,54 +533,11 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Quick Actions */}
-              <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10">
-                <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
-                <div className="space-y-3">
-                  <button
-                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={() => sendPrompt(`Check my KAIA balance on ${selectedNetwork}`)}
-                    disabled={isProcessing}
-                  >
-                    {isProcessing ? 'Processing...' : 'Check Balance'}
-                  </button>
-                  <button
-                    className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={() => sendPrompt(`Swap 10 KAIA for MOCK token on ${selectedNetwork}`)}
-                    disabled={isProcessing}
-                  >
-                    {isProcessing ? 'Processing...' : `Swap Tokens${selectedNetwork === 'testnet' ? ' (Demo)' : ''}`}
-                  </button>
-                  <button
-                    className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={() => sendPrompt(`Check network status on ${selectedNetwork}`)}
-                    disabled={isProcessing}
-                  >
-                    {isProcessing ? 'Processing...' : 'Network Status'}
-                  </button>
-                  <button
-                    className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={() => sendPrompt(`Transfer 50 KAIA to 0x8Ff09c0a34184c35F86F5229d91280DfB523B59A on ${selectedNetwork}`)}
-                    disabled={isProcessing}
-                  >
-                    {isProcessing ? 'Processing...' : 'Transfer Tokens'}
-                  </button>
-                  <button
-                    className="w-full bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={() => sendPrompt(`Show yield farming opportunities on ${selectedNetwork}`)}
-                    disabled={isProcessing}
-                  >
-                    {isProcessing ? 'Processing...' : 'Yield Farming'}
-                  </button>
-                  <button
-                    className="w-full bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white px-4 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={() => sendPrompt(`Analyze KAIA market on ${selectedNetwork}`)}
-                    disabled={isProcessing}
-                  >
-                    {isProcessing ? 'Processing...' : 'Trade Analysis'}
-                  </button>
-                </div>
-              </div>
+              {/* Yield Farming Panel */}
+              <YieldFarmingPanel 
+                selectedNetwork={selectedNetwork}
+                onFarmSelect={handleFarmSelect}
+              />
 
               {/* API Response Display */}
               {apiResponse && (

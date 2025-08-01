@@ -249,57 +249,83 @@ const handler = async (req, res) => {
       }
     }
 
-    // Simple yield farming detection
+    // Enhanced yield farming detection with Kaiascan integration
     if (lowerPrompt.includes('farm') || lowerPrompt.includes('yield') || lowerPrompt.includes('stake')) {
       try {
         if (lowerPrompt.includes('opportunities') || lowerPrompt.includes('suggest')) {
-          // Simple mock yield farming opportunities
-          const mockFarms = [
-            {
-              name: 'KaiaFarm KAIA-MOCK',
-              type: 'Single Asset Staking',
-              apy: '25.5',
-              totalStaked: '150000',
-              rewardRate: '35.2',
-              isActive: true
-            },
-            {
-              name: 'KaiaFarm LP Staking',
-              type: 'LP Staking',
-              apy: '18.7',
-              totalStaked: '75000',
-              rewardRate: '22.1',
-              isActive: true
-            },
-            {
-              name: 'KaiaFarm USDT Staking',
-              type: 'Single Asset Staking',
-              apy: '12.3',
-              totalStaked: '300000',
-              rewardRate: '28.9',
-              isActive: true
-            }
-          ];
+          // Import and use Kaiascan service for real yield farming data
+          const { kaiascanService } = await import('../../utils/kaiascanService.js');
+          
+          const result = await kaiascanService.getRealYieldFarmingData(network);
+          
+          if (result.success && result.opportunities.length > 0) {
+            const farms = result.opportunities;
+            
+            let response = `🌾 **Real Yield Farming Opportunities - ${network === 'testnet' ? 'Kaia Testnet' : 'Kaia Mainnet'}**\n\n`;
+            
+            farms.forEach((farm, index) => {
+              const apy = farm.onChainData?.apy || '0.00';
+              const tvl = farm.onChainData?.totalSupply || '0';
+              const risk = parseFloat(apy) > 20 ? 'High' : parseFloat(apy) > 10 ? 'Medium' : 'Low';
+              
+              response += `**${index + 1}. ${farm.name}**\n` +
+                `• **Type:** ${farm.type}\n` +
+                `• **APY:** ${apy}%\n` +
+                `• **TVL:** ${parseFloat(tvl).toLocaleString()} KAIA\n` +
+                `• **Risk:** ${risk}\n` +
+                `• **Rewards:** ${farm.rewardToken?.symbol || 'KAIA'}\n` +
+                `• **Address:** \`${farm.address}\`\n` +
+                `• **Block:** ${farm.onChainData?.blockNumber?.toLocaleString() || 'N/A'}\n` +
+                `• **Status:** ${farm.onChainData?.isActive ? '🟢 Active' : '🔴 Inactive'}\n\n`;
+            });
+            
+            response += `📊 **Data Source:** Real on-chain data from Kaiascan API\n`;
+            response += `🔗 **Verified:** Contract data from blockchain explorer\n`;
+            response += `\n💡 **Recommendation:** Consider ${farms[0].name} for the best APY (${farms[0].onChainData?.apy || '0.00'}%).`;
+            
+            return res.status(200).json({
+              response: response,
+              success: true,
+              farmingData: { 
+                opportunities: farms, 
+                network: network,
+                isReal: true,
+                source: 'Kaiascan API'
+              }
+            });
+          } else {
+            // Fallback to mock data if no real farms found
+            const mockFarms = [
+              {
+                name: 'KaiaFarm KAIA-MOCK',
+                type: 'Single Asset Staking',
+                apy: '25.5',
+                totalStaked: '150000',
+                rewardRate: '35.2',
+                isActive: true
+              }
+            ];
 
-          let response = `🌾 **Yield Farming Opportunities - ${network}**\n\n`;
-          
-          mockFarms.forEach((farm, index) => {
-            response += `**${index + 1}. ${farm.name} (Demo)**\n` +
-              `• **Type:** ${farm.type}\n` +
-              `• **APY:** ${farm.apy}%\n` +
-              `• **Total Staked:** ${farm.totalStaked} tokens\n` +
-              `• **Reward Rate:** ${farm.rewardRate} KAIA/day\n` +
-              `• **Status:** ${farm.isActive ? '🟢 Active' : '🔴 Inactive'}\n\n`;
-          });
-          
-          response += `🧪 **${mockFarms.length} demo farm(s) for testing**\n`;
-          response += `\n💡 **Recommendation:** Consider ${mockFarms[0].name} for the best APY (${mockFarms[0].apy}%).`;
-          
-          return res.status(200).json({
-            response: response,
-            success: true,
-            farmingData: { opportunities: mockFarms, network: network }
-          });
+            let response = `🌾 **Yield Farming Opportunities - ${network}**\n\n`;
+            
+            mockFarms.forEach((farm, index) => {
+              response += `**${index + 1}. ${farm.name} (Demo)**\n` +
+                `• **Type:** ${farm.type}\n` +
+                `• **APY:** ${farm.apy}%\n` +
+                `• **Total Staked:** ${farm.totalStaked} tokens\n` +
+                `• **Reward Rate:** ${farm.rewardRate} KAIA/day\n` +
+                `• **Status:** ${farm.isActive ? '🟢 Active' : '🔴 Inactive'}\n\n`;
+            });
+            
+            response += `🧪 **${mockFarms.length} demo farm(s) for testing**\n`;
+            response += `\n💡 **Recommendation:** Consider ${mockFarms[0].name} for the best APY (${mockFarms[0].apy}%).`;
+            
+            return res.status(200).json({
+              response: response,
+              success: true,
+              farmingData: { opportunities: mockFarms, network: network, isDemo: true }
+            });
+          }
         } else if (lowerPrompt.includes('position') || lowerPrompt.includes('my') || lowerPrompt.includes('staked')) {
           // Simple mock user positions
           const mockPositions = [

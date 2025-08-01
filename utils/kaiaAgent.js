@@ -1539,7 +1539,7 @@ class KaiaAgentService {
       // Mock yield farming opportunities (in real implementation, this would query DeFi protocols)
       if (network === 'testnet') {
         opportunities.push({
-          protocol: 'DragonFarm',
+          protocol: 'KaiaFarm',
           pair: 'KAIA-MOCK',
           apy: '12.5%',
           tvl: '1,250,000 KAIA',
@@ -1562,7 +1562,7 @@ class KaiaAgentService {
       } else {
         // Mainnet opportunities (when available)
         opportunities.push({
-          protocol: 'DragonFarm',
+          protocol: 'KaiaFarm',
           pair: 'KAIA-USDT',
           apy: '15.8%',
           tvl: '5,200,000 KAIA',
@@ -1770,7 +1770,7 @@ class KaiaAgentService {
           
           if (isActive && totalSupplyEth > 0) {
             opportunities.push({
-              protocol: 'DragonFarm',
+              protocol: 'KaiaFarm',
               pair: 'KAIA-MOCK',
               apy: `${apy.toFixed(2)}%`,
               tvl: `${(totalSupplyEth / 1000).toFixed(1)}K KAIA`,
@@ -1792,7 +1792,7 @@ class KaiaAgentService {
       // If no real farms found, return mock data for demo
       if (opportunities.length === 0) {
         opportunities.push({
-          protocol: 'DragonFarm',
+          protocol: 'KaiaFarm',
           pair: 'KAIA-MOCK',
           apy: '12.5%',
           tvl: '1,250,000 KAIA',
